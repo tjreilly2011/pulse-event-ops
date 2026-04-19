@@ -1,0 +1,35 @@
+# Rust build artifacts
+/target/
+
+# Cargo lock (keep for binaries, ignore for libraries - this is a binary)
+# Cargo.lock is intentionally committed for binaries
+
+# Environment files (keep .env.example, ignore actual .env)
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# SQLx offline query cache (commit if using offline mode, otherwise ignore)
+.sqlx/
+
+# Test coverage
+lcov.info.gi    
+tarpaulin-report.html
+
+# Logs
+*.log
+
+# Temporary orchestrator working directory (see constitution Sprint Artifact Location Policy)
+ralph/
