@@ -8,6 +8,24 @@ jobs:
   rust-quality-gates:
     runs-on: ubuntu-latest
 
+    services:
+      db:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: pulse_event_ops_user
+          POSTGRES_PASSWORD: pulse_event_ops_password
+          POSTGRES_DB: pulse_event_ops_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://pulse_event_ops_user:pulse_event_ops_password@localhost:5432/pulse_event_ops_db
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
