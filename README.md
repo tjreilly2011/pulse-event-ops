@@ -25,4 +25,74 @@ See `/docs/roadmap.md`
 
 ## Getting Started
 
-TBD
+### Prerequisites
+
+- [Rust](https://rustup.rs/) (stable)
+- [Docker](https://www.docker.com/) + Docker Compose
+- `sqlx-cli` (optional, for manual migration management): `cargo install sqlx-cli`
+
+### Development Setup
+
+**1. Start the database**
+
+```bash
+docker compose up -d
+```
+
+**2. Configure environment**
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` if your local Postgres differs from the defaults.
+
+**3. Run the backend**
+
+```bash
+cargo run
+```
+
+Migrations run automatically on startup. The server listens on `http://localhost:3000`.
+
+### API
+
+| Method | Path            | Description             |
+|--------|-----------------|-------------------------|
+| GET    | `/health`       | Liveness check          |
+| POST   | `/events`       | Create a new event      |
+| GET    | `/events`       | List all events         |
+| GET    | `/events/:id`   | Fetch event by ID       |
+
+**Example — create event:**
+
+```bash
+curl -X POST http://localhost:3000/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "passenger_assistance",
+    "created_by": "00000000-0000-0000-0000-000000000001",
+    "destination_location_id": "station-euston",
+    "vertical_metadata": {
+      "assistance_type": "wheelchair_ramp",
+      "coach_number": "C"
+    }
+  }'
+```
+
+### Running Tests
+
+Tests use `#[sqlx::test]` — each test gets a fresh database and tears it down on completion. Requires `DATABASE_URL` to be set and the database to be running.
+
+```bash
+docker compose up -d
+cp .env.example .env
+cargo test
+```
+
+### Code Quality
+
+```bash
+cargo fmt
+cargo clippy -- -D warnings
+```

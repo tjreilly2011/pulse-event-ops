@@ -711,3 +711,204 @@ This sprint is not about adding complexity for its own sake. It exists to make t
 - NATS/WebSocket adoption path is documented
 - No unnecessary complexity is introduced early
 ```
+
+
+###### sprints again:
+
+🚀 FULL ROADMAP (now fixed, build-focused)
+
+Phase 1 — MVP (you are here)
+
+Goal: working system used by ONE user flow
+
+⸻
+
+✅ Sprint 3 — Minimal Event API (you already have)
+
+→ create + read events
+
+⸻
+
+Sprint 4 — Event Updates & Acknowledgment
+
+Adds:
+
+* PATCH /events/{id}/acknowledge
+* POST /events/{id}/updates
+* event status updates
+* event timeline table
+
+Now you have:
+
+* create event
+* someone acknowledges (ownership)
+* updates recorded
+
+👉 This is your core workflow alive
+
+⸻
+
+Sprint 5 — Realtime (SSE)
+
+Adds:
+
+* /events/stream (SSE endpoint)
+* push updates to connected clients
+
+Now you have:
+
+* live updates (no refresh)
+* replaces phone “what’s happening?” calls
+
+⸻
+
+Sprint 6 — Basic Web Dashboard (HTMX)
+
+Adds:
+
+* event list page
+* event detail page
+* live updates via SSE
+* acknowledge button
+
+Now you have:
+
+* usable ops dashboard
+
+⸻
+
+Sprint 7 — Simple Mobile UI (Flutter stub)
+
+Adds:
+
+* create event screen
+* quick actions (hardcoded for now)
+* submit event
+
+Now you have:
+
+* full loop:
+    * mobile → backend → dashboard
+
+⸻
+
+🧪 Phase 2 — Pilot
+
+Goal: usable by real people (your brother)
+
+⸻
+
+Sprint 8 — Role Awareness (lightweight)
+
+Adds:
+
+* basic roles:
+    * frontline
+    * management
+* filter events by role/location
+
+⸻
+
+Sprint 9 — Notifications (basic)
+
+Adds:
+
+* push notifications (or simple polling fallback)
+* notify on:
+    * event created
+    * acknowledged
+
+⸻
+
+Sprint 10 — Location Model
+
+Adds:
+
+* locations table
+* attach events to locations
+* basic “next station” logic (simple version)
+
+⸻
+
+Sprint 11 — Deploy + Test Pilot
+
+Adds:
+
+* deploy backend (cheap VPS / Fly.io / Railway)
+* test with 1–2 real users
+* collect feedback
+
+⸻
+
+🏗 Phase 3 — Productisation
+
+⸻
+
+Sprint 12 — Permissions (real)
+
+* who can see/update what
+
+⸻
+
+Sprint 13 — Audit & History
+
+* full event timeline
+* who did what, when
+
+⸻
+
+Sprint 14 — Better Workflow States
+
+* refine lifecycle
+* edge cases
+
+⸻
+
+🧠 Phase 4 — Intelligence (later)
+
+Ignore for now.
+
+⸻
+
+🌍 Phase 5 — Expansion
+
+Only AFTER pilot success.
+
+⸻
+
+🔥 What matters right now
+
+Forget everything beyond:
+
+👉 Sprint 3 → Sprint 5
+
+That gets you:
+
+* working backend
+* real-time updates
+* usable core system
+
+⸻
+
+🧠 Critical correction to your process
+
+You don’t need:
+
+❌ 10 markdown files per sprint
+❌ full domain modelling upfront
+
+You need:
+
+✅ thin definition
+✅ immediate build
+✅ feedback loop
+
+⸻
+
+🎯 Your execution for TODAY
+
+You said:
+
+“i will start now with sprint 3”
+
+Perfect.

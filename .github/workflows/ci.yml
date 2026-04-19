@@ -5,21 +5,26 @@ on:
   pull_request:
 
 jobs:
-  python-quality-gates:
+  rust-quality-gates:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - name: Cargo fmt check
+        run: cargo fmt --check
 
-      - name: Lint (ruff)
-        run: uv run ruff check .
+      - name: Cargo clippy (deny warnings)
+        run: cargo clippy -- -D warnings
 
-      - name: Unit tests
-        run: uv run pytest tests/ --ignore=tests/test_db.py -v
+      - name: Cargo test
+        run: cargo test
+
+      - name: Cargo build release
+        run: cargo build --release
