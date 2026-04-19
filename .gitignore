@@ -25,8 +25,11 @@
 .sqlx/
 
 # Test coverage
-lcov.info
+lcov.info.gi    
 tarpaulin-report.html
 
 # Logs
 *.log
+
+# Temporary orchestrator working directory (see constitution Sprint Artifact Location Policy)
+ralph/

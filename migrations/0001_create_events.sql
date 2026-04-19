@@ -3,9 +3,10 @@
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 -- Events table
--- Uses UNIQUE (id) rather than PRIMARY KEY (id) to allow TimescaleDB to
--- partition the table by created_at without the time column being part of
--- a conflicting primary key constraint.
+-- TimescaleDB hypertables cannot have unique constraints that exclude the
+-- partition column (created_at). We rely on gen_random_uuid() for id
+-- uniqueness (UUID v4 collision probability is negligible) and add a plain
+-- index on id for lookup performance.
 -- Future: destination_location_id will become a FK to a locations table.
 CREATE TABLE IF NOT EXISTS events (
     id                      UUID        NOT NULL DEFAULT gen_random_uuid(),
@@ -19,8 +20,7 @@ CREATE TABLE IF NOT EXISTS events (
     title                   TEXT,
     description             TEXT,
     priority                TEXT        NOT NULL DEFAULT 'normal',
-    vertical_metadata       JSONB,
-    UNIQUE (id)
+    vertical_metadata       JSONB
 );
 
 -- Convert to TimescaleDB hypertable partitioned on created_at
