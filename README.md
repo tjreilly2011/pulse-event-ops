@@ -96,3 +96,127 @@ cargo test
 cargo fmt
 cargo clippy -- -D warnings
 ```
+
+### Smoke Tests
+
+Run these against a live server (`cargo run`) to verify all endpoints and key failure paths. Requires the database to be running and `.env` to be configured.
+
+**Gate 1 — Health check**
+```bash
+curl -s http://localhost:3000/health
+# expected: {"status":"ok"}  HTTP 200
+```
+
+**Gate 2 — Create event (happy path)**
+```bash
+EVENT=$(curl -s -X POST http://localhost:3000/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "passenger_assistance",
+    "created_by": "00000000-0000-0000-0000-000000000001",
+    "destination_location_id": "station-euston",
+    "vertical_metadata": {
+      "assistance_type": "wheelchair_ramp",
+      "coach_number": "C"
+    }
+  }')
+echo $EVENT
+# expected: JSON body with "status":"CREATED"  HTTP 201
+```
+
+**Gate 3 — List events (happy path)**
+```bash
+curl -s http://localhost:3000/events
+# expected: JSON array, HTTP 200
+```
+
+**Gate 4 — Get event by ID (happy path)**
+```bash
+# substitute a real UUID from Gate 2
+EVENT_ID=$(echo $EVENT | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+curl -s http://localhost:3000/events/$EVENT_ID
+# expected: JSON event body, HTTP 200
+```
+
+**Gate 5 — Get event by ID (failure path — not found)**
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  http://localhost:3000/events/00000000-0000-0000-0000-000000000000
+# expected: 404
+```
+
+**Gate 6 — Create event with invalid body (failure path)**
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:3000/events \
+  -H "Content-Type: application/json" \
+  -d '{"bad": "payload"}'
+# expected: 422
+```
+
+### Database Checks
+
+All commands run inside the Docker container — no local `psql` required.
+
+**Open an interactive psql session**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db
+```
+
+Then run any SQL below at the `pulse_event_ops_db=#` prompt. Or run one-liners directly:
+
+**Check events table schema**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "\d events"
+```
+
+**Confirm TimescaleDB hypertable is set up**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT hypertable_name, num_dimensions
+FROM timescaledb_information.hypertables
+WHERE hypertable_name = 'events';"
+# expected: 1 row, num_dimensions = 1
+```
+
+**Check TimescaleDB chunks (confirms partitioning is active)**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT chunk_name, range_start, range_end
+FROM timescaledb_information.chunks
+WHERE hypertable_name = 'events'
+ORDER BY range_start DESC;"
+```
+
+**Count all events**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT COUNT(*) FROM events;"
+```
+
+**View all events (most recent first)**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT id, event_type, status, created_by, destination_location_id, created_at
+FROM events
+ORDER BY created_at DESC;"
+```
+
+**View full event record including JSONB metadata**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT * FROM events ORDER BY created_at DESC LIMIT 1;"
+```
+
+**Check events by status**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT status, COUNT(*) FROM events GROUP BY status;"
+```
+
+**Verify indexes are present**
+```bash
+docker exec -it pulse-event-ops-db-1 psql -U pulse_event_ops_user -d pulse_event_ops_db -c "
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'events';"
+# expected: index on created_at DESC and index on id
+```
