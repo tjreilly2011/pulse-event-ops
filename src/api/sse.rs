@@ -1,15 +1,24 @@
-use crate::domain::sse_event::SseEvent;
+use std::convert::Infallible;
+
 use axum::{
     extract::State,
     response::sse::{Event, KeepAlive, Sse},
 };
-use std::convert::Infallible;
 use tokio::sync::broadcast;
-use tokio_stream::Stream;
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+
+use crate::domain::sse_event::SseEvent;
 
 pub async fn stream_events(
-    State(_tx): State<broadcast::Sender<SseEvent>>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    // stub — real implementation in BE-06
-    Sse::new(tokio_stream::empty()).keep_alive(KeepAlive::default())
+    State(tx): State<broadcast::Sender<SseEvent>>,
+) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
+    let rx = tx.subscribe();
+    let stream = BroadcastStream::new(rx).filter_map(|result| match result {
+        Ok(ev) => {
+            let data = serde_json::to_string(&ev).ok()?;
+            Some(Ok(Event::default().data(data)))
+        }
+        Err(_) => None, // lagged subscriber — skip, stay connected
+    });
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
