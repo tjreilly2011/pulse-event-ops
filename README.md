@@ -57,12 +57,15 @@ Migrations run automatically on startup. The server listens on `http://localhost
 
 ### API
 
-| Method | Path            | Description             |
-|--------|-----------------|-------------------------|
-| GET    | `/health`       | Liveness check          |
-| POST   | `/events`       | Create a new event      |
-| GET    | `/events`       | List all events         |
-| GET    | `/events/:id`   | Fetch event by ID       |
+| Method  | Path                        | Status | Description                                                   |
+|---------|-----------------------------|--------|---------------------------------------------------------------|
+| GET     | `/health`                   | 200    | Liveness check                                                |
+| POST    | `/events`                   | 201    | Create a new event                                            |
+| GET     | `/events`                   | 200    | List all events                                               |
+| GET     | `/events/:id`               | 200    | Fetch event by ID                                             |
+| `PATCH` | `/events/:id/acknowledge`   | 200    | Acknowledge event (CREATED or DELIVERED → ACKNOWLEDGED)       |
+| `POST`  | `/events/:id/updates`       | 201    | Add a timeline entry to an event                              |
+| `GET`   | `/events/:id/updates`       | 200    | List all timeline entries for an event (ordered oldest first) |
 
 **Example — create event:**
 
@@ -152,6 +155,28 @@ curl -s -o /dev/null -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -d '{"bad": "payload"}'
 # expected: 422
+```
+
+**Gate 7: Acknowledge an event**
+```bash
+# First create an event and capture its id
+EVENT_ID=$(curl -s -X POST http://localhost:3000/events \
+  -H "Content-Type: application/json" \
+  -d '{"event_type":"test","created_by":"00000000-0000-0000-0000-000000000001","destination_location_id":"station-x"}' \
+  | jq -r '.id')
+
+curl -s -X PATCH http://localhost:3000/events/$EVENT_ID/acknowledge \
+  -H "Content-Type: application/json" \
+  -d '{"acknowledged_by":"00000000-0000-0000-0000-000000000002"}'
+# Expected: 200 with status == "ACKNOWLEDGED"
+```
+
+**Gate 8: Add an event update**
+```bash
+curl -s -X POST http://localhost:3000/events/$EVENT_ID/updates \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Train diverted to platform 3","update_type":"NOTE"}'
+# Expected: 201 with event_id and content in response
 ```
 
 ### Database Checks
