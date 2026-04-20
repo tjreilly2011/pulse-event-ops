@@ -4,12 +4,14 @@ use axum::{
 };
 use tower_http::trace::TraceLayer;
 
-use crate::api::{events, health, state::AppState};
+use crate::api::state::AppState;
+use crate::api::{events, health, sse};
 
 pub fn build(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health::health))
         .route("/events", post(events::create).get(events::list))
+        .route("/events/stream", get(sse::stream_events))
         .route("/events/:id", get(events::get_by_id))
         .route("/events/:id/acknowledge", patch(events::acknowledge_event))
         .route(
