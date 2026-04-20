@@ -23,6 +23,8 @@ pub struct Event {
     pub created_by: Uuid,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub acknowledged_by: Option<Uuid>,
+    pub acknowledged_at: Option<DateTime<Utc>>,
     pub destination_location_id: String,
     pub source_location_id: Option<String>,
     pub title: Option<String>,
