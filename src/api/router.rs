@@ -2,12 +2,11 @@ use axum::{
     routing::{get, patch, post},
     Router,
 };
-use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 
-use crate::api::{events, health};
+use crate::api::{events, health, state::AppState};
 
-pub fn build(pool: PgPool) -> Router {
+pub fn build(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health::health))
         .route("/events", post(events::create).get(events::list))
@@ -18,5 +17,5 @@ pub fn build(pool: PgPool) -> Router {
             post(events::add_event_update).get(events::list_event_updates),
         )
         .layer(TraceLayer::new_for_http())
-        .with_state(pool)
+        .with_state(state)
 }
