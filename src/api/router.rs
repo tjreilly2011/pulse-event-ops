@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use sqlx::PgPool;
@@ -12,6 +12,11 @@ pub fn build(pool: PgPool) -> Router {
         .route("/health", get(health::health))
         .route("/events", post(events::create).get(events::list))
         .route("/events/:id", get(events::get_by_id))
+        .route("/events/:id/acknowledge", patch(events::acknowledge_event))
+        .route(
+            "/events/:id/updates",
+            post(events::add_event_update).get(events::list_event_updates),
+        )
         .layer(TraceLayer::new_for_http())
         .with_state(pool)
 }

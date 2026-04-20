@@ -43,3 +43,42 @@ pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Event>, sqlx::E
         .fetch_optional(pool)
         .await
 }
+
+pub async fn acknowledge_event(
+    pool: &PgPool,
+    event_id: Uuid,
+    acknowledged_by: Uuid,
+) -> Result<Event, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
+    let event = sqlx::query_as::<_, Event>(
+        r#"
+        UPDATE events
+        SET status = 'ACKNOWLEDGED',
+            acknowledged_by = $1,
+            acknowledged_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+        "#,
+    )
+    .bind(acknowledged_by)
+    .bind(event_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO event_updates (event_id, update_type, content, actor_id)
+        VALUES ($1, 'ACKNOWLEDGED', 'Acknowledged', $2)
+        "#,
+    )
+    .bind(event_id)
+    .bind(acknowledged_by)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(event)
+}
