@@ -110,3 +110,312 @@ async fn get_event_by_id_not_found(pool: sqlx::PgPool) {
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+
+fn make_acknowledge_body() -> String {
+    serde_json::to_string(&json!({
+        "acknowledged_by": "00000000-0000-0000-0000-000000000002"
+    }))
+    .unwrap()
+}
+
+fn make_add_update_body() -> String {
+    serde_json::to_string(&json!({
+        "content": "Train diverted",
+        "update_type": "NOTE",
+        "actor_id": "00000000-0000-0000-0000-000000000003"
+    }))
+    .unwrap()
+}
+
+#[sqlx::test]
+async fn acknowledge_event_transitions_status(pool: sqlx::PgPool) {
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let ack_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/events/{}/acknowledge", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ack_response.status(), StatusCode::OK);
+
+    let fetch_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/events/{}", id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(fetch_response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(fetch_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let event: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(event["status"], "ACKNOWLEDGED");
+    assert_eq!(
+        event["acknowledged_by"],
+        "00000000-0000-0000-0000-000000000002"
+    );
+    assert!(!event["acknowledged_at"].is_null());
+}
+
+#[sqlx::test]
+async fn acknowledge_event_duplicate_returns_409(pool: sqlx::PgPool) {
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let ack_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/events/{}/acknowledge", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ack_response.status(), StatusCode::OK);
+
+    let dup_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/events/{}/acknowledge", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(dup_response.status(), StatusCode::CONFLICT);
+}
+
+#[sqlx::test]
+async fn acknowledge_auto_creates_timeline_entry(pool: sqlx::PgPool) {
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let ack_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/events/{}/acknowledge", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ack_response.status(), StatusCode::OK);
+
+    let updates_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/events/{}/updates", id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(updates_response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(updates_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let updates: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let arr = updates.as_array().unwrap();
+    assert!(arr.len() >= 1);
+    assert_eq!(arr[0]["update_type"], "ACKNOWLEDGED");
+}
+
+#[sqlx::test]
+async fn add_event_update_returns_201(pool: sqlx::PgPool) {
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let update_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri(format!("/events/{}/updates", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_add_update_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(update_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(update_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let update: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(update["event_id"], id);
+    assert_eq!(update["content"], "Train diverted");
+    assert_eq!(update["update_type"], "NOTE");
+}
+
+#[sqlx::test]
+async fn list_event_updates_returns_ordered_entries(pool: sqlx::PgPool) {
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let ack_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/events/{}/acknowledge", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ack_response.status(), StatusCode::OK);
+
+    let update_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri(format!("/events/{}/updates", id))
+                .header("content-type", "application/json")
+                .body(Body::from(make_add_update_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(update_response.status(), StatusCode::CREATED);
+
+    let list_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/events/{}/updates", id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(list_response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(list_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let updates: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let arr = updates.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["update_type"], "ACKNOWLEDGED");
+    assert_eq!(arr[1]["content"], "Train diverted");
+}
+
+#[sqlx::test]
+async fn acknowledge_unknown_event_returns_404(pool: sqlx::PgPool) {
+    let response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri("/events/00000000-0000-0000-0000-000000000099/acknowledge")
+                .header("content-type", "application/json")
+                .body(Body::from(make_acknowledge_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn add_update_unknown_event_returns_404(pool: sqlx::PgPool) {
+    let response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events/00000000-0000-0000-0000-000000000099/updates")
+                .header("content-type", "application/json")
+                .body(Body::from(make_add_update_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
