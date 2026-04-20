@@ -12,12 +12,14 @@ pub struct AcknowledgeEventRequest {
     pub acknowledged_by: Uuid,
 }
 
+#[derive(Debug)]
 pub enum AcknowledgeError {
     NotFound,
     InvalidStatus,
     Db(sqlx::Error),
 }
 
+#[derive(Debug)]
 pub enum AddUpdateError {
     NotFound,
     Db(sqlx::Error),

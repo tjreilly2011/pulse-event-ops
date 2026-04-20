@@ -419,3 +419,122 @@ async fn add_update_unknown_event_returns_404(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+
+#[sqlx::test]
+async fn sse_endpoint_returns_200_text_event_stream(pool: sqlx::PgPool) {
+    use axum::http::header;
+
+    let app = pulse_event_ops::create_app(pool);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/events/stream")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert!(
+        content_type.contains("text/event-stream"),
+        "Expected text/event-stream, got: {}",
+        content_type
+    );
+}
+
+#[sqlx::test]
+async fn create_event_broadcasts_sse_event_created(pool: sqlx::PgPool) {
+    use pulse_event_ops::application::events as event_app;
+    use pulse_event_ops::domain::event::CreateEventRequest;
+    use pulse_event_ops::domain::sse_event::SseEvent;
+    use tokio::sync::broadcast;
+
+    let (tx, mut rx) = broadcast::channel::<SseEvent>(16);
+
+    let req = serde_json::from_value::<CreateEventRequest>(serde_json::json!({
+        "event_type": "passenger_assistance",
+        "created_by": "00000000-0000-0000-0000-000000000001",
+        "destination_location_id": "station-euston"
+    }))
+    .unwrap();
+
+    event_app::create(&pool, &tx, req).await.unwrap();
+
+    let event = rx.try_recv().expect("Expected SSE event to be broadcast");
+    assert!(matches!(event, SseEvent::EventCreated { .. }));
+}
+
+#[sqlx::test]
+async fn acknowledge_event_broadcasts_sse_event_acknowledged(pool: sqlx::PgPool) {
+    use pulse_event_ops::application::events::{self as event_app, AcknowledgeEventRequest};
+    use pulse_event_ops::domain::event::CreateEventRequest;
+    use pulse_event_ops::domain::sse_event::SseEvent;
+    use tokio::sync::broadcast;
+
+    let (tx, mut rx) = broadcast::channel::<SseEvent>(16);
+
+    let req = serde_json::from_value::<CreateEventRequest>(serde_json::json!({
+        "event_type": "passenger_assistance",
+        "created_by": "00000000-0000-0000-0000-000000000001",
+        "destination_location_id": "station-euston"
+    }))
+    .unwrap();
+    let event = event_app::create(&pool, &tx, req).await.unwrap();
+
+    // Consume the EventCreated broadcast
+    let _ = rx.try_recv();
+
+    let ack_req = AcknowledgeEventRequest {
+        acknowledged_by: Uuid::new_v4(),
+    };
+    event_app::acknowledge(&pool, &tx, event.id, ack_req)
+        .await
+        .unwrap();
+
+    let broadcast_event = rx.try_recv().expect("Expected SSE event to be broadcast");
+    assert!(matches!(
+        broadcast_event,
+        SseEvent::EventAcknowledged { .. }
+    ));
+}
+
+#[sqlx::test]
+async fn add_update_broadcasts_sse_event_update_added(pool: sqlx::PgPool) {
+    use pulse_event_ops::application::events as event_app;
+    use pulse_event_ops::domain::event::CreateEventRequest;
+    use pulse_event_ops::domain::event_update::CreateEventUpdateRequest;
+    use pulse_event_ops::domain::sse_event::SseEvent;
+    use tokio::sync::broadcast;
+
+    let (tx, mut rx) = broadcast::channel::<SseEvent>(16);
+
+    let req = serde_json::from_value::<CreateEventRequest>(serde_json::json!({
+        "event_type": "passenger_assistance",
+        "created_by": "00000000-0000-0000-0000-000000000001",
+        "destination_location_id": "station-euston"
+    }))
+    .unwrap();
+    let event = event_app::create(&pool, &tx, req).await.unwrap();
+
+    // Consume the EventCreated broadcast
+    let _ = rx.try_recv();
+
+    let update_req = CreateEventUpdateRequest {
+        content: "Train delayed at platform 3".to_string(),
+        actor_id: Some(Uuid::new_v4()),
+        update_type: Some("NOTE".to_string()),
+    };
+    event_app::add_update(&pool, &tx, event.id, update_req)
+        .await
+        .unwrap();
+
+    let broadcast_event = rx.try_recv().expect("Expected SSE event to be broadcast");
+    assert!(matches!(broadcast_event, SseEvent::EventUpdateAdded { .. }));
+}
