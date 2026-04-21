@@ -1,203 +1,214 @@
-# Roadmap — pulse-event-ops
+# Roadmap — pulse-event-ops (Aligned MVP Build)
 
 ## Product Goal
-Build the smallest possible real-time operational event coordination system that solves a real rail workflow first, while keeping the core generic for later verticals.
+Build the simplest possible real-time operational system that allows frontline staff to report issues instantly and share live situational awareness across teams.
 
-Initial proving workflow:
-- frontline user creates an event
-- receiving team sees it in real time
-- someone acknowledges it
-- updates are recorded
-- everyone works from the same event timeline instead of calls and guesswork
+The system must:
+- be fast to use under pressure
+- provide immediate shared visibility
+- replace fragmented communication (calls, WhatsApp, guesswork)
+
+---
+
+## Core MVP Features (Non-Negotiable)
+
+1. One-tap event reporting
+2. Live activity feed (real-time)
+3. Passenger load indicator (simple but powerful)
+4. Basic location awareness
+5. Simple dashboard for visibility
+
+No overengineering.
+No unnecessary abstraction.
+No integrations yet.
+
+---
 
 ## Locked MVP Tech Choices
 - Backend: Rust
 - Database: PostgreSQL + TimescaleDB
-- Realtime to clients: SSE first
-- Internal messaging at MVP: none
-- Optional later: WebSockets where justified
-- Optional later bus: NATS + JetStream
-- Dashboard: Jinja2 + HTMX + DaisyUI
+- Realtime: SSE
 - Mobile: Flutter
+- Dashboard: HTMX + Jinja2 + DaisyUI
+
+---
 
 ## Delivery Rule
-From Sprint 3 onward, every sprint must produce runnable software.
+Every sprint must produce working software.
 
-No more discovery-only or doc-heavy build sprints.
-Each sprint must add working capability to the project.
-
----
-
-# Phase 0 — Discovery & Definition
-Purpose:
-- validate the real rail workflow
-- define the MVP boundary
-- define the minimal event model
-
-Completed:
-- Sprint 1 — Problem Discovery & MVP Workflow Definition
-- Sprint 2 — MVP Core Model, Domain Language & Product Boundaries
-
-These sprints are reference inputs only.
-They should not block further coding work.
+No doc-only sprints beyond Phase 0.
 
 ---
 
-# Phase 1 — MVP Build
-Purpose:
-Get a working end-to-end system into the hands of your brother and colleagues as quickly as possible.
+# Phase 1 — MVP Build (YOU ARE HERE)
+
+Goal:
+Get a working system into real users’ hands ASAP.
+
+---
 
 ## Sprint 3 — Minimal Event API ✅
-Outcome:
-- runnable Rust backend
-- Postgres/TimescaleDB connected
-- minimal events table
 - create event
 - list events
-- get event by id
+- get event
 
-## Sprint 4 — Event Updates & Acknowledgment
-Outcome:
-- acknowledge an event
-- record updates against an event
-- introduce event timeline/history
-- basic workflow starts to exist
+---
 
-## Sprint 5 — Realtime (SSE)
-Outcome:
-- live stream of event changes
-- receiving users no longer need to refresh
-- platform begins replacing “what’s happening?” calls
+## Sprint 4 — Event Updates & Acknowledgment ✅
+- acknowledge events
+- add updates
+- event timeline exists
 
-## Sprint 6 — Basic Web Dashboard (HTMX)
-Outcome:
-- event list page
-- event detail page
+---
+
+## Sprint 5 — Realtime Feed (SSE) ✅
+- stream events live
+- no refresh required
+- replaces “what’s happening?” calls
+
+---
+
+## Sprint 6 — Basic Dashboard (HTMX)
+- event feed page
 - live updates via SSE
+- event detail view
 - acknowledge button
-- usable first operations UI
 
-## Sprint 7 — Simple Mobile UI (Flutter MVP Stub)
-Outcome:
-- create event from phone
-- recent events view
-- quick-action-first UI
-- end-to-end loop:
-  mobile → backend → dashboard
+👉 This becomes your “Slack/Twitter for operations”
+
+---
+
+## Sprint 7 — Mobile Reporting (Flutter MVP)
+- create event screen
+- minimal inputs:
+  - event type (Delay / Overcrowding / Assistance / Safety)
+  - optional note
+- auto:
+  - timestamp
+  - location (basic for now)
+- submit to backend
+
+👉 This is your “one-tap reporting”
+
+---
+
+## Sprint 8 — Passenger Load Indicator 🔥 (HIGH VALUE)
+- add simple input to events:
+  - 🟢 Low
+  - 🟠 Medium
+  - 🔴 High
+- display on:
+  - dashboard feed
+  - event detail
+
+👉 This alone creates immediate operational value
+
+---
+
+## Sprint 9 — Location Awareness (Basic)
+- introduce locations table
+- attach events to locations
+- simple filtering:
+  - by station / area
+- prepare for:
+  - “what’s happening ahead”
+
+---
 
 ### MVP Exit Criteria
-MVP is complete when:
-- a frontline user can create an event from mobile
-- a receiving user can see it live
-- a receiving user can acknowledge it
-- updates can be added to the event
-- the event timeline is visible
-- the system runs locally and reliably
+MVP is DONE when:
+
+- a frontline user can report an event in seconds
+- other users see it instantly (SSE)
+- events can be acknowledged
+- updates can be added
+- passenger load is visible
+- events are tied to a location
+- dashboard shows live operational state
+
+👉 If this works, you already have something valuable
 
 ---
 
 # Phase 2 — Pilot
-Purpose:
-Make the MVP usable by real people in a controlled pilot.
 
-## Sprint 8 — Lightweight Role Awareness
-Outcome:
-- basic roles
-- simple event visibility rules
-- location/role filtering where needed
+Goal:
+Use with real users (your brother + colleagues)
 
-## Sprint 9 — Notifications (Basic)
-Outcome:
-- notify on important changes
-- at minimum support event created / acknowledged
-- basic reliability and logging around delivery
+---
 
-## Sprint 10 — Location Model
-Outcome:
-- locations table
-- tie events to locations properly
-- support basic station/location awareness
-- groundwork for rail workflow quality
+## Sprint 10 — Notifications (Basic)
+- notify on:
+  - new events
+  - acknowledgements
+- simple delivery (keep it basic)
 
-## Sprint 11 — Deploy & Pilot Test
-Outcome:
-- deploy backend + DB
-- test with 1–2 real users
+---
+
+## Sprint 11 — Role Awareness (Light)
+- roles:
+  - frontline
+  - management
+- filter visibility
+
+---
+
+## Sprint 12 — Deploy & Pilot
+- deploy backend
+- run with real users
 - collect feedback
-- identify top workflow friction
-
-### Pilot Exit Criteria
-Pilot phase is complete when:
-- at least one real workflow is tested with real users
-- the system supports real event creation and acknowledgment
-- feedback is collected and turned into changes
 
 ---
 
 # Phase 3 — Productisation
-Purpose:
-Harden the product so it becomes operationally credible.
 
-## Sprint 12 — Permissions
-Outcome:
-- real access control
-- who can see and update what
+## Sprint 13 — Permissions
+- who can see/update what
 
-## Sprint 13 — Audit & History Hardening
-Outcome:
-- complete event history
-- stronger audit trail
-- clearer “who did what, when”
+## Sprint 14 — Audit Hardening
+- full timeline clarity
+- stronger traceability
 
-## Sprint 14 — Workflow Hardening
-Outcome:
+## Sprint 15 — Workflow Improvements
 - refine lifecycle
-- improve edge-case handling
-- support stronger operational consistency
-
-### Productisation Exit Criteria
-This phase is complete when:
-- the product is operationally trustworthy
-- actions are auditable
-- visibility and permissions are reliable
+- edge cases
 
 ---
 
 # Phase 4 — Intelligence (Later)
-Purpose:
-Only after core workflow adoption is proven.
-
-Potential additions:
-- AI summaries
-- prioritisation support
-- operational predictions
-
-Not a current focus.
+- summaries
+- pattern detection
+- predictions
 
 ---
 
 # Phase 5 — Expansion
-Purpose:
-Generalise only after rail MVP and pilot success.
+Only AFTER MVP works.
 
-Possible next verticals:
+Targets:
 - airports
-- events / stadiums
-- logistics / warehouses
+- events/stadiums
+- logistics
 - emergency services
-
-Rule:
-Do not build expansion features before the rail workflow is genuinely working.
 
 ---
 
-# Immediate Focus
-Ignore everything beyond Sprint 5 for now.
+# 🔥 Immediate Focus (CRITICAL)
 
-## What matters now
-1. Sprint 4 — Event Updates & Acknowledgment
-2. Sprint 5 — Realtime (SSE)
-3. Sprint 6 — Basic Web Dashboard
-4. Sprint 7 — Simple Mobile UI
+Ignore everything beyond:
 
-That is the shortest path to a real MVP your brother can actually try.
+1. Sprint 5 (Realtime)
+2. Sprint 6 (Dashboard)
+3. Sprint 7 (Mobile)
+4. Sprint 8 (Passenger Load)
+
+---
+
+# Core Principle
+
+This is NOT a messaging system.
+
+This is:
+→ a real-time operational visibility system
+
+Events are the source of truth.

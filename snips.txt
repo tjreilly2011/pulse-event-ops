@@ -1,0 +1,2 @@
+what i like to do is break down the project into phases with a well defined sprint.md file for each phase - i then pasted the plan into my prompt/
+

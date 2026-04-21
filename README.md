@@ -66,6 +66,36 @@ Migrations run automatically on startup. The server listens on `http://localhost
 | `PATCH` | `/events/:id/acknowledge`   | 200    | Acknowledge event (CREATED or DELIVERED → ACKNOWLEDGED)       |
 | `POST`  | `/events/:id/updates`       | 201    | Add a timeline entry to an event                              |
 | `GET`   | `/events/:id/updates`       | 200    | List all timeline entries for an event (ordered oldest first) |
+| `GET`   | `/events/stream`            | 200    | Subscribe to the realtime SSE event stream                    |
+
+### Realtime — SSE Stream
+
+The `GET /events/stream` endpoint streams server-sent events (SSE) to any connected client. Connect with:
+
+```bash
+curl -N http://localhost:3000/events/stream
+```
+
+The `-N` flag disables curl's output buffering so events appear as they arrive.
+
+The stream emits three event types:
+
+**`EVENT_CREATED`** — emitted when `POST /events` succeeds:
+```json
+data: {"type":"EVENT_CREATED","event":{"id":"...","event_type":"passenger_assistance","status":"CREATED","created_by":"...","created_at":"...","updated_at":"...","acknowledged_by":null,"acknowledged_at":null,"destination_location_id":"station-euston","source_location_id":null,"title":null,"description":null,"priority":"normal","vertical_metadata":null}}
+```
+
+**`EVENT_ACKNOWLEDGED`** — emitted when `PATCH /events/:id/acknowledge` succeeds:
+```json
+data: {"type":"EVENT_ACKNOWLEDGED","event":{"id":"...","status":"ACKNOWLEDGED","acknowledged_by":"...","acknowledged_at":"..."}}
+```
+
+**`EVENT_UPDATE_ADDED`** — emitted when `POST /events/:id/updates` succeeds:
+```json
+data: {"type":"EVENT_UPDATE_ADDED","update":{"id":"...","event_id":"...","update_type":"NOTE","content":"Train delayed at platform 3","actor_id":"...","created_at":"..."}}
+```
+
+> **Note:** The stream is best-effort. Messages are broadcast in-process over a `tokio::broadcast` channel and are not persisted or replayed. Postgres remains the source of truth — clients that need a guaranteed view should poll the REST endpoints.
 
 **Example — create event:**
 

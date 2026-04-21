@@ -5,6 +5,7 @@ use axum::{
     Json,
 };
 use sqlx::PgPool;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::application::events::{
@@ -12,12 +13,14 @@ use crate::application::events::{
 };
 use crate::domain::event::{CreateEventRequest, Event};
 use crate::domain::event_update::CreateEventUpdateRequest;
+use crate::domain::sse_event::SseEvent;
 
 pub async fn create(
     State(pool): State<PgPool>,
+    State(tx): State<broadcast::Sender<SseEvent>>,
     Json(req): Json<CreateEventRequest>,
 ) -> Result<(StatusCode, Json<Event>), (StatusCode, String)> {
-    event_app::create(&pool, req)
+    event_app::create(&pool, &tx, req)
         .await
         .map(|event| (StatusCode::CREATED, Json(event)))
         .map_err(|e| {
@@ -58,10 +61,11 @@ pub async fn get_by_id(
 
 pub async fn acknowledge_event(
     State(pool): State<PgPool>,
+    State(tx): State<broadcast::Sender<SseEvent>>,
     Path(id): Path<Uuid>,
     Json(req): Json<AcknowledgeEventRequest>,
 ) -> impl IntoResponse {
-    match event_app::acknowledge(&pool, id, req).await {
+    match event_app::acknowledge(&pool, &tx, id, req).await {
         Ok(event) => (StatusCode::OK, Json(event)).into_response(),
         Err(AcknowledgeError::NotFound) => {
             (StatusCode::NOT_FOUND, "Event not found").into_response()
@@ -82,10 +86,11 @@ pub async fn acknowledge_event(
 
 pub async fn add_event_update(
     State(pool): State<PgPool>,
+    State(tx): State<broadcast::Sender<SseEvent>>,
     Path(id): Path<Uuid>,
     Json(req): Json<CreateEventUpdateRequest>,
 ) -> impl IntoResponse {
-    match event_app::add_update(&pool, id, req).await {
+    match event_app::add_update(&pool, &tx, id, req).await {
         Ok(update) => (StatusCode::CREATED, Json(update)).into_response(),
         Err(AddUpdateError::NotFound) => (StatusCode::NOT_FOUND, "Event not found").into_response(),
         Err(AddUpdateError::Db(e)) => {
