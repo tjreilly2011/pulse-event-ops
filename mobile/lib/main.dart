@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'screens/report_event_screen.dart';
+import 'screens/recent_events_screen.dart';
+import 'services/api_service.dart';
 
 void main() {
   runApp(const PulseOpsApp());
 }
 
 class PulseOpsApp extends StatelessWidget {
-  const PulseOpsApp({super.key});
+  final ApiService? apiService;
+
+  const PulseOpsApp({super.key, this.apiService});
 
   @override
   Widget build(BuildContext context) {
@@ -15,13 +20,15 @@ class PulseOpsApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const AppShell(),
+      home: AppShell(apiService: apiService),
     );
   }
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final ApiService? apiService;
+
+  const AppShell({super.key, this.apiService});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -29,11 +36,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = const [
-    Center(child: Text('Report Event')),
-    Center(child: Text('Recent Events')),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      ReportEventScreen(apiService: widget.apiService),
+      RecentEventsScreen(apiService: widget.apiService),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
