@@ -5,7 +5,7 @@ use axum::{
 use tower_http::trace::TraceLayer;
 
 use crate::api::state::AppState;
-use crate::api::{events, health, sse};
+use crate::api::{dashboard, events, health, sse};
 
 pub fn build(state: AppState) -> Router {
     Router::new()
@@ -17,6 +17,14 @@ pub fn build(state: AppState) -> Router {
         .route(
             "/events/:id/updates",
             post(events::add_event_update).get(events::list_event_updates),
+        )
+        // Dashboard routes — /feed must come before /:id
+        .route("/dashboard/events", get(dashboard::feed_page))
+        .route("/dashboard/events/feed", get(dashboard::feed_partial))
+        .route("/dashboard/events/:id", get(dashboard::detail_page))
+        .route(
+            "/dashboard/events/:id/acknowledge",
+            patch(dashboard::acknowledge),
         )
         .layer(TraceLayer::new_for_http())
         .with_state(state)

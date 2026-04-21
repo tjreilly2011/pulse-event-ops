@@ -1,0 +1,28 @@
+{% if updates.is_empty() %}
+  <div class="text-base-content/50 text-sm py-4">No updates yet.</div>
+{% else %}
+  <ul class="timeline timeline-vertical timeline-compact">
+  {% for update in updates %}
+    <li>
+      <div class="timeline-middle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 text-primary">
+          <circle cx="10" cy="10" r="5"/>
+        </svg>
+      </div>
+      <div class="timeline-end mb-4">
+        <div class="text-xs text-base-content/50 mb-1">
+          {{ update.created_at.format("%Y-%m-%d %H:%M UTC") }}
+          {% if let Some(ut) = update.update_type.as_ref() %}
+            &nbsp;·&nbsp;<span class="badge badge-outline badge-xs">{{ ut }}</span>
+          {% endif %}
+          {% if let Some(actor) = update.actor_id %}
+            &nbsp;·&nbsp;{{ actor }}
+          {% endif %}
+        </div>
+        <div class="text-sm">{{ update.content }}</div>
+      </div>
+      <hr/>
+    </li>
+  {% endfor %}
+  </ul>
+{% endif %}
