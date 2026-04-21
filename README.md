@@ -78,6 +78,29 @@ curl -N http://localhost:3000/events/stream
 
 The `-N` flag disables curl's output buffering so events appear as they arrive.
 
+### Dashboard
+
+A basic operations dashboard is available at `http://localhost:3000/dashboard/events`. It provides a live-updating event feed and detail view powered by HTMX + DaisyUI, with no page reloads needed for new events.
+
+**Start the server and open the dashboard:**
+
+```bash
+docker compose up -d
+cargo run
+open http://localhost:3000/dashboard/events
+```
+
+**Dashboard routes:**
+
+| Method  | Path                                    | Description                                              |
+|---------|-----------------------------------------|----------------------------------------------------------|
+| GET     | `/dashboard/events`                     | Full event feed page (auto-refreshes via SSE)            |
+| GET     | `/dashboard/events/feed`                | HTMX partial — event list swap target                    |
+| GET     | `/dashboard/events/:id`                 | Event detail page with timeline                          |
+| PATCH   | `/dashboard/events/:id/acknowledge`     | Acknowledge event from dashboard (returns HX-Redirect)   |
+
+**Live updates:** The feed page connects to `/events/stream` via `EventSource`. When a new event or update is broadcast, the event list partial is automatically refreshed without a full page reload.
+
 The stream emits three event types:
 
 **`EVENT_CREATED`** — emitted when `POST /events` succeeds:

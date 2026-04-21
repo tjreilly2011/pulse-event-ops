@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="/dashboard/events" class="btn btn-ghost btn-sm">← Back to Events</a>
+</div>
+
+<div class="card bg-base-100 shadow-lg mb-8">
+  <div class="card-body">
+
+    <div class="flex items-center gap-3 flex-wrap mb-4">
+      <h2 class="card-title text-xl">{{ event.event_type }}</h2>
+      <span class="badge {{ event.status.badge_class() }}">{{ event.status }}</span>
+      <span class="badge badge-outline">{{ event.priority }}</span>
+    </div>
+
+    {% if let Some(title) = event.title.as_ref() %}
+    <div class="mb-3">
+      <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Title</div>
+      <div class="font-semibold">{{ title }}</div>
+    </div>
+    {% endif %}
+
+    {% if let Some(desc) = event.description.as_ref() %}
+    <div class="mb-4">
+      <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Description</div>
+      <div class="text-sm">{{ desc }}</div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">ID</div>
+        <div class="font-mono text-sm">{{ event.id }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Created by</div>
+        <div class="font-mono text-sm">{{ event.created_by }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Destination</div>
+        <div class="text-sm">{{ event.destination_location_id }}</div>
+      </div>
+      {% if let Some(src) = event.source_location_id.as_ref() %}
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Source</div>
+        <div class="text-sm">{{ src }}</div>
+      </div>
+      {% endif %}
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Created at</div>
+        <div class="text-sm">{{ event.created_at.format("%Y-%m-%d %H:%M UTC") }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Updated at</div>
+        <div class="text-sm">{{ event.updated_at.format("%Y-%m-%d %H:%M UTC") }}</div>
+      </div>
+      {% if let Some(acked_by) = event.acknowledged_by %}
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Acknowledged by</div>
+        <div class="font-mono text-sm">{{ acked_by }}</div>
+      </div>
+      {% endif %}
+      {% if let Some(acked_at) = event.acknowledged_at %}
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Acknowledged at</div>
+        <div class="text-sm">{{ acked_at.format("%Y-%m-%d %H:%M UTC") }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card-actions justify-end mt-2">
+      {% match event.status %}
+      {% when EventStatus::Created %}
+        <button
+          class="btn btn-warning"
+          hx-patch="/dashboard/events/{{ event.id }}/acknowledge"
+          hx-target="body"
+          hx-push-url="true">
+          Acknowledge
+        </button>
+      {% when EventStatus::Delivered %}
+        <button
+          class="btn btn-warning"
+          hx-patch="/dashboard/events/{{ event.id }}/acknowledge"
+          hx-target="body"
+          hx-push-url="true">
+          Acknowledge
+        </button>
+      {% when EventStatus::Acknowledged %}
+        <button class="btn btn-disabled" disabled>Acknowledge</button>
+      {% when EventStatus::InProgress %}
+        <button class="btn btn-disabled" disabled>Acknowledge</button>
+      {% when EventStatus::Resolved %}
+        <button class="btn btn-disabled" disabled>Acknowledge</button>
+      {% when EventStatus::Cancelled %}
+        <button class="btn btn-disabled" disabled>Acknowledge</button>
+      {% endmatch %}
+    </div>
+
+  </div>
+</div>
+
+<div>
+  <h3 class="text-lg font-semibold mb-3">Timeline</h3>
+  {% include "partials/timeline.html" %}
+</div>
+{% endblock %}

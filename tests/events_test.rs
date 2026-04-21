@@ -538,3 +538,143 @@ async fn add_update_broadcasts_sse_event_update_added(pool: sqlx::PgPool) {
     let broadcast_event = rx.try_recv().expect("Expected SSE event to be broadcast");
     assert!(matches!(broadcast_event, SseEvent::EventUpdateAdded { .. }));
 }
+
+// ─── Dashboard integration tests ─────────────────────────────────────────────
+
+#[sqlx::test]
+async fn dashboard_feed_page_returns_200(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/events")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let ct = response
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert!(ct.contains("text/html"), "expected text/html, got: {ct}");
+}
+
+#[sqlx::test]
+async fn dashboard_feed_partial_returns_200(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/events/feed")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let ct = response
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert!(ct.contains("text/html"), "expected text/html, got: {ct}");
+}
+
+#[sqlx::test]
+async fn dashboard_detail_page_returns_200(pool: sqlx::PgPool) {
+    // Seed an event so we have a real id
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/dashboard/events/{id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn dashboard_detail_page_returns_404(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/dashboard/events/{}", Uuid::new_v4()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_acknowledge_redirects(pool: sqlx::PgPool) {
+    // Seed an event
+    let create_response = pulse_event_ops::create_app(pool.clone())
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(make_create_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let id = created["id"].as_str().unwrap();
+
+    let ack_response = pulse_event_ops::create_app(pool)
+        .oneshot(
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("/dashboard/events/{id}/acknowledge"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(ack_response.status(), StatusCode::OK);
+    let hx_redirect = ack_response
+        .headers()
+        .get("hx-redirect")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert_eq!(hx_redirect, format!("/dashboard/events/{id}"));
+}

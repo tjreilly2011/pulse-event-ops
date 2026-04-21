@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Events</h1>
+</div>
+
+<div id="event-feed">
+  {% include "partials/event_list.html" %}
+</div>
+{% endblock %}

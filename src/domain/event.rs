@@ -15,6 +15,34 @@ pub enum EventStatus {
     Cancelled,
 }
 
+impl std::fmt::Display for EventStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            EventStatus::Created => "CREATED",
+            EventStatus::Delivered => "DELIVERED",
+            EventStatus::Acknowledged => "ACKNOWLEDGED",
+            EventStatus::InProgress => "IN_PROGRESS",
+            EventStatus::Resolved => "RESOLVED",
+            EventStatus::Cancelled => "CANCELLED",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl EventStatus {
+    /// Returns the DaisyUI badge CSS class for this status.
+    pub fn badge_class(&self) -> &'static str {
+        match self {
+            EventStatus::Created => "badge-info",
+            EventStatus::Delivered => "badge-secondary",
+            EventStatus::Acknowledged => "badge-success",
+            EventStatus::InProgress => "badge-warning",
+            EventStatus::Resolved => "badge-neutral",
+            EventStatus::Cancelled => "badge-error",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct Event {
     pub id: Uuid,
