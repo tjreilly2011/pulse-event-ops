@@ -96,30 +96,55 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.4,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.1,
                 children: _categories.map((cat) {
                   final type = cat['type'] as String;
                   final label = cat['label'] as String;
                   final icon = cat['icon'] as IconData;
                   final isSelected = _selectedType == type;
-                  return Card(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).cardColor,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedType = type;
-                          _selectedLabel = label;
-                        });
-                      },
+                  final primary = Theme.of(context).colorScheme.primary;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedType = type;
+                        _selectedLabel = label;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? primary.withOpacity(0.08)
+                            : Colors.white,
+                        border: Border.all(
+                          color: isSelected ? primary : Colors.grey.shade300,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(icon),
-                            const SizedBox(height: 4),
-                            Text(label),
+                            Icon(icon,
+                                size: 36,
+                                color: isSelected
+                                    ? primary
+                                    : Colors.grey.shade600),
+                            const SizedBox(height: 6),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                fontSize: 13,
+                                color: isSelected
+                                    ? primary
+                                    : Colors.grey.shade800,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -127,9 +152,7 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
                   );
                 }).toList(),
               ),
-              _selectedLabel != null
-                  ? Text('Selected: $_selectedLabel')
-                  : const SizedBox(height: 24),
+              const SizedBox(height: 16),
               TextField(
                 controller: _noteController,
                 maxLines: 3,
