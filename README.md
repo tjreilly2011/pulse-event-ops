@@ -99,6 +99,82 @@ open http://localhost:3000/dashboard/events
 | GET     | `/dashboard/events/:id`                 | Event detail page with timeline                          |
 | PATCH   | `/dashboard/events/:id/acknowledge`     | Acknowledge event from dashboard (returns HX-Redirect)   |
 
+### Mobile App (Flutter)
+
+The `mobile/` directory contains the Flutter app for frontline staff to submit events.
+
+**Prerequisites**:
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.x (stable)
+- Backend running on `http://localhost:3000` (or your device's LAN IP)
+
+**Run on simulator / emulator**:
+
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+**Run on a real device** — update the base URL first:
+
+```dart
+// mobile/lib/constants.dart
+const String kApiBaseUrl = 'http://192.168.x.x:3000'; // ← your Mac's LAN IP
+```
+
+**Run Flutter tests**:
+
+```bash
+cd mobile
+flutter test
+```
+
+**App structure**:
+
+| Screen | Default | Description |
+|---|---|---|
+| Report Event | ✅ Landing screen | Category grid → optional note → Send Event |
+| Recent Events | Tab 2 | Newest-first list of submitted events |
+
+**Event categories (hardcoded MVP)**:
+
+| Display | `event_type` sent to API |
+|---|---|
+| Delay | `delay` |
+| Overcrowding | `overcrowding` |
+| Assistance | `passenger_assistance` |
+| Safety | `safety_security` |
+
+**Mobile → Dashboard loop**:
+
+```bash
+# 1. Start DB + backend
+docker compose up -d
+cargo run
+
+# 2. Run Flutter app
+cd mobile && flutter run
+
+# 3. Open dashboard in browser — events submitted from mobile appear live
+open http://localhost:3000/dashboard/events
+```
+
+### Smoke Tests
+
+Automated smoke test scripts live in `/tmp/` (generated at sprint end):
+
+| Script | Sprint | Coverage |
+|---|---|---|
+| `python3 /tmp/gate9.py` | Sprint 5 | SSE stream regression |
+| `python3 /tmp/gate10.py` | Sprint 6 | Dashboard routes (feed, detail, acknowledge) |
+| `python3 /tmp/gate11.py` | Sprint 7 | Mobile API contract (POST /events, GET /events) |
+
+Run all gates:
+
+```bash
+python3 /tmp/gate9.py && python3 /tmp/gate10.py && python3 /tmp/gate11.py
+```
+
 **Live updates:** The feed page connects to `/events/stream` via `EventSource`. When a new event or update is broadcast, the event list partial is automatically refreshed without a full page reload.
 
 The stream emits three event types:

@@ -2,6 +2,7 @@ use axum::{
     routing::{get, patch, post},
     Router,
 };
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::api::state::AppState;
@@ -25,6 +26,12 @@ pub fn build(state: AppState) -> Router {
         .route(
             "/dashboard/events/:id/acknowledge",
             patch(dashboard::acknowledge),
+        )
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
         )
         .layer(TraceLayer::new_for_http())
         .with_state(state)
