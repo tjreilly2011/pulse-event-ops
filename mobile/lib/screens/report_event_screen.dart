@@ -167,7 +167,14 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
                 child: ElevatedButton(
                   onPressed:
                       (_selectedType == null || _isSubmitting) ? null : _onSubmit,
-                  child: const Text('Send Event'),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator.adaptive(
+                              strokeWidth: 2),
+                        )
+                      : const Text('Send Event'),
                 ),
               ),
             ],
