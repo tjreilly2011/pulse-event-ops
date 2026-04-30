@@ -28,6 +28,17 @@ class PulseOpsApp extends StatelessWidget {
           error: Color(0xFFD32F2F),
           onError: Colors.white,
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0A2342),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          indicatorColor: const Color(0xFFFFB300),
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ),
       ),
       home: AppShell(apiService: apiService),
     );
