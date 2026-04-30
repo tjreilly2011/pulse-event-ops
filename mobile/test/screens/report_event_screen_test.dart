@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pulse_ops/models/event_model.dart';
@@ -26,6 +28,20 @@ class FakeApiService extends ApiService {
       destinationLocationId: 'station-euston',
     );
   }
+}
+
+class _SlowFakeApiService extends ApiService {
+  final Future<EventModel> _future;
+
+  _SlowFakeApiService(this._future);
+
+  @override
+  Future<EventModel> createEvent({
+    required String eventType,
+    required String title,
+    String? description,
+  }) =>
+      _future;
 }
 
 Widget _buildScreen({ApiService? apiService}) {
@@ -93,5 +109,35 @@ void main() {
 
     final button = tester.widget<ElevatedButton>(buttonFinder);
     expect(button.onPressed, isNull);
+  });
+
+  testWidgets('5. Loading spinner appears while submit is in progress',
+      (tester) async {
+    final completer = Completer<EventModel>();
+    final slowFake = _SlowFakeApiService(completer.future);
+    await tester.pumpWidget(_buildScreen(apiService: slowFake));
+
+    await tester.tap(find.text('Delay'));
+    await tester.pump();
+
+    final buttonFinder = find.widgetWithText(ElevatedButton, 'Send Event');
+    await tester.ensureVisible(buttonFinder);
+    await tester.pump();
+
+    await tester.tap(buttonFinder);
+    await tester.pump(); // one frame — submission started, not yet complete
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    completer.complete(EventModel(
+      id: 'test-id',
+      eventType: 'delay',
+      status: 'open',
+      title: 'Delay',
+      description: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      destinationLocationId: 'station-euston',
+    ));
+    await tester.pumpAndSettle();
   });
 }

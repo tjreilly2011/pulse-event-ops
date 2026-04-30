@@ -7,7 +7,12 @@
       <div class="card-body p-4 flex flex-row items-center gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-semibold truncate">{{ event.event_type }}</span>
+            {% if let Some(t) = event.title.as_ref() %}
+              <span class="font-semibold truncate">{{ t }}</span>
+              <span class="text-xs text-base-content/50">{{ event.event_type }}</span>
+            {% else %}
+              <span class="font-semibold truncate">{{ event.event_type }}</span>
+            {% endif %}
             <span class="badge {{ event.status.badge_class() }} badge-sm">{{ event.status }}</span>
             {% if event.priority != "normal" %}
               <span class="badge badge-outline badge-sm">{{ event.priority }}</span>

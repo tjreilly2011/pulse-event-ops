@@ -17,8 +17,28 @@ class PulseOpsApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pulse Operations',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF0A2342),
+          onPrimary: Colors.white,
+          secondary: Color(0xFFFFB300),
+          onSecondary: Colors.black,
+          surface: Color(0xFFF5F7FA),
+          onSurface: Color(0xFF1A1A2E),
+          error: Color(0xFFD32F2F),
+          onError: Colors.white,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0A2342),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          indicatorColor: const Color(0xFFFFB300),
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ),
       ),
       home: AppShell(apiService: apiService),
     );

@@ -87,14 +87,7 @@
           hx-push-url="true">
           Acknowledge
         </button>
-      {% when EventStatus::Acknowledged %}
-        <button class="btn btn-disabled" disabled>Acknowledge</button>
-      {% when EventStatus::InProgress %}
-        <button class="btn btn-disabled" disabled>Acknowledge</button>
-      {% when EventStatus::Resolved %}
-        <button class="btn btn-disabled" disabled>Acknowledge</button>
-      {% when EventStatus::Cancelled %}
-        <button class="btn btn-disabled" disabled>Acknowledge</button>
+      {% when _ %}
       {% endmatch %}
     </div>
 

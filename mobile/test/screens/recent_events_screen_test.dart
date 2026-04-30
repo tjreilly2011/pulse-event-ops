@@ -63,13 +63,13 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('2. List renders correct number of tiles from mocked response',
+  testWidgets('2. List renders correct number of cards from mocked response',
       (tester) async {
     final fake = FakeApiService(events: _twoEvents);
     await tester.pumpWidget(_buildScreen(apiService: fake));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ListTile), findsNWidgets(2));
+    expect(find.byType(Card), findsNWidgets(2));
   });
 
   testWidgets('3. Non-null title is displayed (not eventType)', (tester) async {
@@ -95,6 +95,66 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load events'), findsOneWidget);
+  });
+
+  testWidgets('6. RESOLVED status badge has green background', (tester) async {
+    final fake = FakeApiService(events: [
+      const EventModel(
+        id: 'id-r',
+        eventType: 'delay',
+        status: 'RESOLVED',
+        title: 'Done',
+        createdAt: '2026-04-21T19:58:00Z',
+        destinationLocationId: 'station-euston',
+      ),
+    ]);
+    await tester.pumpWidget(_buildScreen(apiService: fake));
+    await tester.pumpAndSettle();
+
+    final badgeFinder = find
+        .ancestor(
+          of: find.text('RESOLVED'),
+          matching: find.byType(Container),
+        )
+        .first;
+    final container = tester.widget<Container>(badgeFinder);
+    final deco = container.decoration as BoxDecoration;
+    expect(deco.color, Colors.green.shade700);
+  });
+
+  testWidgets('7. ACKNOWLEDGED status badge has amber background',
+      (tester) async {
+    final fake = FakeApiService(events: [
+      const EventModel(
+        id: 'id-a',
+        eventType: 'delay',
+        status: 'ACKNOWLEDGED',
+        title: 'Noted',
+        createdAt: '2026-04-21T19:58:00Z',
+        destinationLocationId: 'station-euston',
+      ),
+    ]);
+    await tester.pumpWidget(_buildScreen(apiService: fake));
+    await tester.pumpAndSettle();
+
+    final badgeFinder = find
+        .ancestor(
+          of: find.text('ACKNOWLEDGED'),
+          matching: find.byType(Container),
+        )
+        .first;
+    final container = tester.widget<Container>(badgeFinder);
+    final deco = container.decoration as BoxDecoration;
+    expect(deco.color, const Color(0xFFFFB300));
+  });
+
+  testWidgets('8. RefreshIndicator is present in the widget tree',
+      (tester) async {
+    final fake = FakeApiService(events: _twoEvents);
+    await tester.pumpWidget(_buildScreen(apiService: fake));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 }
 
