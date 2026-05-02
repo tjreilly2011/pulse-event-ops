@@ -6,7 +6,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::api::state::AppState;
-use crate::api::{dashboard, events, health, sse};
+use crate::api::{dashboard, events, health, rail, sse};
 
 pub fn build(state: AppState) -> Router {
     Router::new()
@@ -19,6 +19,14 @@ pub fn build(state: AppState) -> Router {
             "/events/:id/updates",
             post(events::add_event_update).get(events::list_event_updates),
         )
+        // Rail routes
+        .route("/rail/services", get(rail::list_services))
+        .route("/rail/services/:id", get(rail::get_service_by_id))
+        .route("/rail/services/:id/stops", get(rail::list_service_stops))
+        .route("/rail/services/:id/context", get(rail::get_service_context))
+        .route("/rail/stations", get(rail::list_stations))
+        .route("/rail/stations/:id", get(rail::get_station_by_id))
+        .route("/rail/presence", get(rail::list_presence))
         // Dashboard routes — /feed must come before /:id
         .route("/dashboard/events", get(dashboard::feed_page))
         .route("/dashboard/events/feed", get(dashboard::feed_partial))

@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::event::EventStatus;
-use crate::domain::rail::{RailService, RailStation, ServiceContext, StaffPresence, StatusDot};
+use crate::domain::rail::{RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot};
 use crate::infrastructure::rail_repo;
 
 pub async fn list_services(pool: &PgPool) -> Result<Vec<RailService>, sqlx::Error> {
@@ -15,6 +15,21 @@ pub async fn list_stations(pool: &PgPool) -> Result<Vec<RailStation>, sqlx::Erro
 
 pub async fn list_presence(pool: &PgPool) -> Result<Vec<StaffPresence>, sqlx::Error> {
     rail_repo::list_presence(pool).await
+}
+
+pub async fn get_service(pool: &PgPool, id: Uuid) -> Result<Option<RailService>, sqlx::Error> {
+    rail_repo::get_service(pool, id).await
+}
+
+pub async fn list_service_stops(
+    pool: &PgPool,
+    service_id: Uuid,
+) -> Result<Vec<RailServiceStop>, sqlx::Error> {
+    rail_repo::list_service_stops(pool, service_id).await
+}
+
+pub async fn get_station(pool: &PgPool, id: Uuid) -> Result<Option<RailStation>, sqlx::Error> {
+    rail_repo::get_station(pool, id).await
 }
 
 pub async fn get_service_context(
