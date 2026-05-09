@@ -244,3 +244,76 @@ async fn dashboard_service_detail_contains_expected_context_sections(pool: sqlx:
     assert!(html.contains("Service Status"));
     assert!(html.contains("Related Events"));
 }
+
+#[sqlx::test]
+async fn dashboard_station_detail_returns_200_for_seeded_station(pool: sqlx::PgPool) {
+    let station_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_stations LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed station must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/stations/{}", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn dashboard_station_detail_returns_404_for_unknown_station(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/stations/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
+    let station_row = sqlx::query!("SELECT id, name, code FROM rail_stations LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed station must exist");
+    let station_id = station_row.id;
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/stations/{}", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains(&station_row.name));
+    assert!(html.contains(&station_row.code));
+    assert!(html.contains("Staff Presence"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("Region"));
+}

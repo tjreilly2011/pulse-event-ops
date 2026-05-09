@@ -1,0 +1,112 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="/dashboard/rail/stations" class="btn btn-ghost btn-sm">← Back to Rail Stations</a>
+</div>
+
+<div class="card bg-base-100 shadow-lg mb-6">
+  <div class="card-body">
+    <div class="flex items-center gap-3 flex-wrap mb-4">
+      <h1 class="card-title text-2xl">Station {{ station_name }}</h1>
+      <span class="inline-block w-3 h-3 rounded-full {{ dot_class }}"></span>
+      <span class="badge badge-outline">{{ station_code }}</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Station ID</div>
+        <div class="font-mono text-sm">{{ station_id }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Station Name</div>
+        <div class="text-sm">{{ station_name }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Code</div>
+        <div class="font-mono text-sm">{{ station_code }}</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Region</div>
+        <div class="text-sm">{{ station_region }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title text-lg">Staff Presence</h2>
+      <div class="text-sm mb-3">
+        <span class="font-semibold">On Duty:</span> {{ staff_on_duty_count }} / {{ staff_total_count }}
+      </div>
+      {% if staff.len() == 0 %}
+      <p class="text-sm text-base-content/70">No staff presence records.</p>
+      {% else %}
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Actor</th>
+              <th>Role</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in staff %}
+            <tr>
+              <td class="font-mono text-xs">{{ member.actor_id }}</td>
+              <td>{{ member.role_label }}</td>
+              <td>{{ member.presence_type }}</td>
+              <td>{{ member.status }}</td>
+              <td>{{ member.last_seen_at }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <h2 class="card-title text-lg">Related Events</h2>
+        <span class="badge badge-ghost">{{ active_event_count }} Active</span>
+      </div>
+      {% if events.len() == 0 %}
+      <p class="text-sm text-base-content/70">No active related events.</p>
+      {% else %}
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Title</th>
+              <th>Event ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+            <tr>
+              <td>{{ event.event_type }}</td>
+              <td>{{ event.status }}</td>
+              <td>{{ event.priority }}</td>
+              <td>{{ event.title }}</td>
+              <td class="font-mono text-xs">{{ event.id }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

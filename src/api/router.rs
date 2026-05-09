@@ -41,6 +41,10 @@ pub fn build(state: AppState) -> Router {
             "/dashboard/rail/stations",
             get(rail_dashboard::stations_page),
         )
+        .route(
+            "/dashboard/rail/stations/:id",
+            get(rail_dashboard::station_detail_page),
+        )
         // Dashboard routes — /feed must come before /:id
         .route("/dashboard/events", get(dashboard::feed_page))
         .route("/dashboard/events/feed", get(dashboard::feed_partial))

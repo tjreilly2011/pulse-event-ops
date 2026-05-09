@@ -21,7 +21,9 @@
         <td>
           <span class="inline-block w-3 h-3 rounded-full {{ station.dot_class }}"></span>
         </td>
-        <td class="font-semibold">{{ station.name }}</td>
+        <td class="font-semibold">
+          <a href="/dashboard/rail/stations/{{ station.id }}" class="link link-primary">{{ station.name }}</a>
+        </td>
         <td class="font-mono">{{ station.code }}</td>
         <td>{{ station.region }}</td>
       </tr>

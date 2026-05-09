@@ -23,6 +23,7 @@ struct ServiceRow {
 }
 
 struct StationRow {
+    id: String,
     name: String,
     code: String,
     region: String,
@@ -81,6 +82,21 @@ struct RailServiceDetailTemplate {
     staff_total_count: usize,
     staff_on_duty_count: usize,
     stops: Vec<StopRow>,
+    events: Vec<EventRow>,
+    staff: Vec<StaffRow>,
+}
+
+#[derive(Template)]
+#[template(path = "rail_station_detail.html")]
+struct RailStationDetailTemplate {
+    station_id: String,
+    station_name: String,
+    station_code: String,
+    station_region: String,
+    dot_class: String,
+    active_event_count: i64,
+    staff_total_count: usize,
+    staff_on_duty_count: i64,
     events: Vec<EventRow>,
     staff: Vec<StaffRow>,
 }
@@ -207,6 +223,7 @@ pub async fn stations_page(State(pool): State<PgPool>) -> Response {
             Err(e) => return context_error_response("station", &id, &e),
         };
         rows.push(StationRow {
+            id: id.to_string(),
             dot_class: status_dot_class(&dot).to_string(),
             name: station.name,
             code: station.code,
@@ -282,6 +299,56 @@ pub async fn service_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         staff_total_count,
         staff_on_duty_count,
         stops,
+        events,
+        staff,
+    })
+}
+
+/// GET /dashboard/rail/stations/:id
+pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid>) -> Response {
+    let context = match rail::get_station_context(&pool, id).await {
+        Ok(Some(ctx)) => ctx,
+        Ok(None) => return (StatusCode::NOT_FOUND, "Rail station not found").into_response(),
+        Err(e) => {
+            tracing::error!("rail station_detail_page error for {}: {}", id, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load rail station detail",
+            )
+                .into_response();
+        }
+    };
+
+    let station = context.station;
+    let station_id = station.id.to_string();
+    let station_name = station.name;
+    let station_code = station.code;
+    let station_region = station.region.unwrap_or_else(|| "-".to_string());
+    let active_event_count = context.active_event_count;
+    let staff_on_duty_count = context.staff_on_duty;
+    let staff_total_count = context.staff.len();
+
+    let events = context
+        .active_events
+        .into_iter()
+        .map(map_event_row)
+        .collect::<Vec<_>>();
+
+    let staff = context
+        .staff
+        .into_iter()
+        .map(map_staff_row)
+        .collect::<Vec<_>>();
+
+    render(RailStationDetailTemplate {
+        station_id,
+        station_name,
+        station_code,
+        station_region,
+        dot_class: status_dot_class(&context.status).to_string(),
+        active_event_count,
+        staff_total_count,
+        staff_on_duty_count,
         events,
         staff,
     })
