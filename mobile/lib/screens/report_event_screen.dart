@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
+import '../state/selected_rail_context.dart';
 
 const _categories = [
   {'label': 'Delay', 'type': 'delay', 'icon': Icons.train},
@@ -15,15 +16,36 @@ const _categories = [
 
 class ReportEventScreen extends StatefulWidget {
   final ApiService apiService;
+  final SelectedRailContext? selectedRailContext;
 
-  ReportEventScreen({super.key, ApiService? apiService})
-      : apiService = apiService ?? ApiService();
+  ReportEventScreen({
+    super.key,
+    ApiService? apiService,
+    this.selectedRailContext,
+  }) : apiService = apiService ?? ApiService();
 
   @override
   State<ReportEventScreen> createState() => _ReportEventScreenState();
 }
 
 class _ReportEventScreenState extends State<ReportEventScreen> {
+  String _locationLabel() {
+    final contextState = widget.selectedRailContext;
+    if (contextState == null) return kLocationPlaceholder;
+    final serviceCode = contextState.selectedServiceCode;
+    final stationName = contextState.selectedStationName;
+    if (serviceCode != null && stationName != null) {
+      return '$serviceCode • $stationName';
+    }
+    if (serviceCode != null) {
+      return serviceCode;
+    }
+    if (stationName != null) {
+      return stationName;
+    }
+    return kLocationPlaceholder;
+  }
+
   String? _selectedType;
   String? _selectedLabel;
   final TextEditingController _noteController = TextEditingController();
@@ -74,16 +96,32 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
         title: const Text('Pulse Operations'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              kLocationPlaceholder,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.white70),
-            ),
-          ),
+          child: widget.selectedRailContext == null
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    _locationLabel(),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.white70),
+                  ),
+                )
+              : AnimatedBuilder(
+                  animation: widget.selectedRailContext!,
+                  builder: (context, child) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        _locationLabel(),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.white70),
+                      ),
+                    );
+                  },
+                ),
         ),
       ),
       body: SingleChildScrollView(
