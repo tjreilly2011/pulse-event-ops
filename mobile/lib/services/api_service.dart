@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../models/event_model.dart';
+import '../models/rail_service_model.dart';
 
 class ApiService {
   final http.Client _client;
@@ -43,6 +44,18 @@ class ApiService {
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
         .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<RailServiceModel>> listRailServices() async {
+    final uri = Uri.parse('$kApiBaseUrl/rail/services');
+    final response = await _client.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load rail services: ${response.statusCode}');
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => RailServiceModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }

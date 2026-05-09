@@ -115,7 +115,7 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? primary.withOpacity(0.08)
+                            ? primary.withValues(alpha: 0.08)
                             : Colors.white,
                         border: Border.all(
                           color: isSelected ? primary : Colors.grey.shade300,
