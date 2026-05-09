@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../models/event_model.dart';
+import '../models/rail_context_response_model.dart';
 import '../models/rail_service_model.dart';
 import '../models/rail_service_stop_model.dart';
 import '../models/rail_station_model.dart';
@@ -40,7 +41,8 @@ class ApiService {
       throw Exception('Failed to create event: ${response.statusCode}');
     }
     return EventModel.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>);
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<EventModel>> listEvents() async {
@@ -84,11 +86,48 @@ class ApiService {
     final response = await _client.get(uri);
     if (response.statusCode != 200) {
       throw Exception(
-          'Failed to load service stops for $serviceId: ${response.statusCode}');
+        'Failed to load service stops for $serviceId: ${response.statusCode}',
+      );
     }
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
         .map((e) => RailServiceStopModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<RailServiceContextResponseModel?> getServiceContext(
+    String serviceId,
+  ) async {
+    final uri = Uri.parse('$kApiBaseUrl/rail/services/$serviceId/context');
+    final response = await _client.get(uri);
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to load service context for $serviceId: ${response.statusCode}',
+      );
+    }
+    return RailServiceContextResponseModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<RailStationContextResponseModel?> getStationContext(
+    String stationId,
+  ) async {
+    final uri = Uri.parse('$kApiBaseUrl/rail/stations/$stationId/context');
+    final response = await _client.get(uri);
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to load station context for $stationId: ${response.statusCode}',
+      );
+    }
+    return RailStationContextResponseModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 }
