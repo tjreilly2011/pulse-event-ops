@@ -18,6 +18,7 @@ Rail industry:
 - Backend: Rust
 - Database: PostgreSQL
 - Realtime: WebSockets / SSE
+- Rail context is a vertical, rail-specific layer over generic events. It adds service/station state, staff presence, and related-event context for the rail dashboard and mobile app without changing the core event API.
 
 ## Roadmap
 
@@ -68,6 +69,21 @@ Migrations run automatically on startup. The server listens on `http://localhost
 | `GET`   | `/events/:id/updates`       | 200    | List all timeline entries for an event (ordered oldest first) |
 | `GET`   | `/events/stream`            | 200    | Subscribe to the realtime SSE event stream                    |
 
+### Rail API
+
+The rail endpoints expose the generic rail entities plus the shipped context payloads used by the dashboard and mobile app.
+
+| Method | Path                         | Status | Description |
+|--------|------------------------------|--------|-------------|
+| GET    | `/rail/services`             | 200    | List rail services |
+| GET    | `/rail/services/:id`         | 200    | Fetch a rail service |
+| GET    | `/rail/services/:id/stops`   | 200    | List stops for a service |
+| GET    | `/rail/services/:id/context` | 200    | Service context payload with `service`, `stops`, `staff`, `status_dot`, `active_event_count`, and `active_events` |
+| GET    | `/rail/stations`             | 200    | List rail stations |
+| GET    | `/rail/stations/:id`         | 200    | Fetch a rail station |
+| GET    | `/rail/stations/:id/context` | 200    | Station context payload with `station`, `status`, `active_event_count`, `staff_on_duty`, `active_events`, and `staff` |
+| GET    | `/rail/presence`             | 200    | List staff presence rows |
+
 ### Realtime — SSE Stream
 
 The `GET /events/stream` endpoint streams server-sent events (SSE) to any connected client. Connect with:
@@ -99,9 +115,22 @@ open http://localhost:3000/dashboard/events
 | GET     | `/dashboard/events/:id`                 | Event detail page with timeline                          |
 | PATCH   | `/dashboard/events/:id/acknowledge`     | Acknowledge event from dashboard (returns HX-Redirect)   |
 
+The rail dashboard uses the same pattern for service and station operations views:
+
+| Method | Path                              | Description |
+|--------|-----------------------------------|-------------|
+| GET    | `/dashboard/rail/services`        | Rail services list with status, staff availability, and related-event summaries |
+| GET    | `/dashboard/rail/services/:id`    | Rail service detail page |
+| GET    | `/dashboard/rail/stations`        | Rail stations list with status, staff availability, and related-event summaries |
+| GET    | `/dashboard/rail/stations/:id`    | Rail station detail page |
+
+Open the list pages directly or click through from the service/station code links to inspect the detail pages.
+
 ### Mobile App (Flutter)
 
 The `mobile/` directory contains the Flutter app for frontline staff to submit events.
+
+The Rail tab now uses `/rail/services/:id/context` and `/rail/stations/:id/context` to show the selected service/station, staff summary, and related events. When reporting from the app, the selected rail context is attached to `POST /events` via `rail_service_id` and `rail_station_id` when available.
 
 **Prerequisites**:
 - [Flutter](https://docs.flutter.dev/get-started/install) 3.x (stable)
