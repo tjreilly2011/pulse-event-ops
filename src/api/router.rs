@@ -34,6 +34,10 @@ pub fn build(state: AppState) -> Router {
             get(rail_dashboard::services_page),
         )
         .route(
+            "/dashboard/rail/services/:id",
+            get(rail_dashboard::service_detail_page),
+        )
+        .route(
             "/dashboard/rail/stations",
             get(rail_dashboard::stations_page),
         )

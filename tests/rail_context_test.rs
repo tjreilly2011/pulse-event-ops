@@ -174,3 +174,73 @@ async fn station_context_returns_404_for_unknown_station(pool: sqlx::PgPool) {
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+
+#[sqlx::test]
+async fn dashboard_service_detail_returns_200_for_seeded_service(pool: sqlx::PgPool) {
+    let service_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_services LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed service must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/services/{}", service_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn dashboard_service_detail_returns_404_for_unknown_service(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/services/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_service_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
+    let service_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_services LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed service must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/services/{}", service_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("NL-001"));
+    assert!(html.contains("Service Status"));
+    assert!(html.contains("Related Events"));
+}

@@ -21,7 +21,9 @@
         <td>
           <span class="inline-block w-3 h-3 rounded-full {{ service.dot_class }}"></span>
         </td>
-        <td class="font-mono">{{ service.service_code }}</td>
+        <td class="font-mono">
+          <a href="/dashboard/rail/services/{{ service.id }}" class="link link-primary">{{ service.service_code }}</a>
+        </td>
         <td>{{ service.direction }}</td>
         <td>
           <span class="badge badge-ghost">{{ service.status }}</span>
