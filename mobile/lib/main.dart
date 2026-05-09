@@ -80,8 +80,15 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final railTabBottomInset = _currentIndex == 2
+        ? kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom
+        : 0.0;
+
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: Padding(
+        padding: EdgeInsets.only(bottom: railTabBottomInset),
+        child: _screens[_currentIndex],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

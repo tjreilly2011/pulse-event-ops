@@ -436,9 +436,6 @@ class _RailContextScreenState extends State<RailContextScreen> {
           children: [
             Text('On duty: $onDutyCount'),
             Text('Other status: $offDutyCount'),
-            const SizedBox(height: 8),
-            for (final person in staff.take(3))
-              Text('${person.roleLabel} (${_formatLabel(person.status)})'),
           ],
         ),
       ),
@@ -454,11 +451,31 @@ class _RailContextScreenState extends State<RailContextScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Rail Services')),
-      body: FutureBuilder<_RailContextData>(
-        future: _future,
-        builder: (context, snapshot) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        bottom: true,
+        child: Column(
+        children: [
+          Container(
+            height: kToolbarHeight,
+            width: double.infinity,
+            color: Theme.of(context).appBarTheme.backgroundColor,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: const Text(
+              'Rail Services',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32 / 1.6,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<_RailContextData>(
+              future: _future,
+              builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -488,7 +505,7 @@ class _RailContextScreenState extends State<RailContextScreen> {
           final selectedServiceId =
               _selectedServiceId ??
               widget.selectedRailContext.selectedServiceId;
-          final selectedStationId =
+            final selectedStationId =
               _selectedStationId ??
               widget.selectedRailContext.selectedStationId;
           final selectedService = services
@@ -503,6 +520,7 @@ class _RailContextScreenState extends State<RailContextScreen> {
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
+              padding: const EdgeInsets.only(bottom: 16),
               children: [
                 for (final service in services)
                   Card(
@@ -614,12 +632,16 @@ class _RailContextScreenState extends State<RailContextScreen> {
                     _sectionTitle('Staff summary'),
                     _buildStaffSummarySection(),
                   ],
-                  const SizedBox(height: 16),
                 ],
+                const SizedBox(height: 280),
               ],
             ),
           );
         },
+            ),
+          ),
+        ],
+        ),
       ),
     );
   }

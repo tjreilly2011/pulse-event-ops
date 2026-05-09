@@ -401,7 +401,7 @@ void main() {
 
       expect(find.text('Staff summary'), findsOneWidget);
       expect(find.text('On duty: 1'), findsOneWidget);
-      expect(find.text('Conductor (On Duty)'), findsOneWidget);
+      expect(find.text('Other status: 0'), findsOneWidget);
     },
   );
 
