@@ -2,7 +2,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::event::EventStatus;
-use crate::domain::rail::{RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot};
+use crate::domain::rail::{
+    RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot,
+};
 use crate::infrastructure::rail_repo;
 
 pub async fn list_services(pool: &PgPool) -> Result<Vec<RailService>, sqlx::Error> {
