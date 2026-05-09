@@ -315,9 +315,9 @@ async fn dashboard_station_detail_returns_404_for_unknown_station(pool: sqlx::Pg
 async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
     let (station_id, station_name, station_code): (Uuid, String, String) =
         sqlx::query_as("SELECT id, name, code FROM rail_stations LIMIT 1")
-        .fetch_one(&pool)
-        .await
-        .expect("seed station must exist");
+            .fetch_one(&pool)
+            .await
+            .expect("seed station must exist");
 
     let app = pulse_event_ops::create_app(pool.clone());
     let response = app
