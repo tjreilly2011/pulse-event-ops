@@ -20,6 +20,8 @@ struct ServiceRow {
     direction: String,
     status: String,
     dot_class: String,
+    staff_summary: String,
+    events_summary: String,
 }
 
 struct StationRow {
@@ -28,6 +30,8 @@ struct StationRow {
     code: String,
     region: String,
     dot_class: String,
+    staff_summary: String,
+    events_summary: String,
 }
 
 struct EventRow {
@@ -164,6 +168,22 @@ fn context_error_response(kind: &str, id: &uuid::Uuid, err: &sqlx::Error) -> Res
         .into_response()
 }
 
+fn format_staff_summary(on_duty: usize, total: usize) -> String {
+    if total == 0 {
+        "-".to_string()
+    } else {
+        format!("{on_duty}/{total} on duty")
+    }
+}
+
+fn format_events_summary(active_event_count: i64) -> String {
+    if active_event_count == 1 {
+        "1 active event".to_string()
+    } else {
+        format!("{active_event_count} active events")
+    }
+}
+
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 /// GET /dashboard/rail/services
@@ -183,8 +203,20 @@ pub async fn services_page(State(pool): State<PgPool>) -> Response {
     let mut rows = Vec::with_capacity(services.len());
     for svc in services {
         let id = svc.id;
-        let dot = match rail::get_service_context(&pool, id).await {
-            Ok(Some(ctx)) => ctx.status_dot,
+        let (dot, staff_summary, events_summary) = match rail::get_service_context(&pool, id).await
+        {
+            Ok(Some(ctx)) => {
+                let on_duty = ctx
+                    .staff
+                    .iter()
+                    .filter(|staff| staff.status == "ON_DUTY")
+                    .count();
+                (
+                    ctx.status_dot,
+                    format_staff_summary(on_duty, ctx.staff.len()),
+                    format_events_summary(ctx.active_event_count),
+                )
+            }
             Ok(None) => return context_not_found_response("service", &id),
             Err(e) => return context_error_response("service", &id, &e),
         };
@@ -194,6 +226,8 @@ pub async fn services_page(State(pool): State<PgPool>) -> Response {
             service_code: svc.service_code,
             direction: svc.direction,
             status: svc.status,
+            staff_summary,
+            events_summary,
         });
     }
 
@@ -217,8 +251,21 @@ pub async fn stations_page(State(pool): State<PgPool>) -> Response {
     let mut rows = Vec::with_capacity(stations.len());
     for station in stations {
         let id = station.id;
-        let dot = match rail::get_station_context(&pool, id).await {
-            Ok(Some(ctx)) => ctx.status,
+        let (dot, staff_summary, events_summary) = match rail::get_station_context(&pool, id).await
+        {
+            Ok(Some(ctx)) => {
+                let staff_total = ctx.staff.len();
+                let on_duty = if ctx.staff_on_duty < 0 {
+                    0
+                } else {
+                    ctx.staff_on_duty as usize
+                };
+                (
+                    ctx.status,
+                    format_staff_summary(on_duty, staff_total),
+                    format_events_summary(ctx.active_event_count),
+                )
+            }
             Ok(None) => return context_not_found_response("station", &id),
             Err(e) => return context_error_response("station", &id, &e),
         };
@@ -228,6 +275,8 @@ pub async fn stations_page(State(pool): State<PgPool>) -> Response {
             name: station.name,
             code: station.code,
             region: station.region.unwrap_or_else(|| "-".to_string()),
+            staff_summary,
+            events_summary,
         });
     }
 

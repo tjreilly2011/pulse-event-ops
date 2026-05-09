@@ -246,6 +246,33 @@ async fn dashboard_service_detail_contains_expected_context_sections(pool: sqlx:
 }
 
 #[sqlx::test]
+async fn dashboard_services_list_contains_context_summaries(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/services")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("Staff Availability"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("on duty") || html.contains(">-<"));
+    assert!(html.contains("active event"));
+}
+
+#[sqlx::test]
 async fn dashboard_station_detail_returns_200_for_seeded_station(pool: sqlx::PgPool) {
     let station_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_stations LIMIT 1")
         .fetch_one(&pool)
@@ -316,4 +343,31 @@ async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx:
     assert!(html.contains("Staff Presence"));
     assert!(html.contains("Related Events"));
     assert!(html.contains("Region"));
+}
+
+#[sqlx::test]
+async fn dashboard_stations_list_contains_context_summaries(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/stations")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("Staff Availability"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("on duty") || html.contains(">-<"));
+    assert!(html.contains("active event"));
 }

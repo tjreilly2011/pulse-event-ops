@@ -13,6 +13,8 @@
         <th>Name</th>
         <th>Code</th>
         <th>Region</th>
+        <th>Staff Availability</th>
+        <th>Related Events</th>
       </tr>
     </thead>
     <tbody>
@@ -26,6 +28,8 @@
         </td>
         <td class="font-mono">{{ station.code }}</td>
         <td>{{ station.region }}</td>
+        <td>{{ station.staff_summary }}</td>
+        <td>{{ station.events_summary }}</td>
       </tr>
       {% endfor %}
     </tbody>

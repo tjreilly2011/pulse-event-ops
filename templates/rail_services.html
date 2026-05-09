@@ -13,6 +13,8 @@
         <th>Service Code</th>
         <th>Direction</th>
         <th>Service Status</th>
+        <th>Staff Availability</th>
+        <th>Related Events</th>
       </tr>
     </thead>
     <tbody>
@@ -28,6 +30,8 @@
         <td>
           <span class="badge badge-ghost">{{ service.status }}</span>
         </td>
+        <td>{{ service.staff_summary }}</td>
+        <td>{{ service.events_summary }}</td>
       </tr>
       {% endfor %}
     </tbody>
