@@ -76,6 +76,26 @@ pub async fn insert_rail_event_context(
     .await
 }
 
+pub async fn insert_rail_event_context_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    event_id: Uuid,
+    service_id: Option<Uuid>,
+    station_id: Option<Uuid>,
+) -> Result<RailEventContext, sqlx::Error> {
+    sqlx::query_as::<_, RailEventContext>(
+        r#"
+        INSERT INTO rail_event_context (event_id, rail_service_id, rail_station_id)
+        VALUES ($1, $2, $3)
+        RETURNING *
+        "#,
+    )
+    .bind(event_id)
+    .bind(service_id)
+    .bind(station_id)
+    .fetch_one(&mut **tx)
+    .await
+}
+
 pub async fn get_rail_event_context_for_event(
     pool: &PgPool,
     event_id: Uuid,

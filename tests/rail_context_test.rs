@@ -95,3 +95,34 @@ async fn create_event_with_nonexistent_rail_service_id_returns_422(pool: sqlx::P
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test]
+async fn invalid_rail_service_id_does_not_persist_orphan_event(pool: sqlx::PgPool) {
+    let mut body = make_base_event_body();
+    body["rail_service_id"] = json!(Uuid::new_v4().to_string());
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    // No orphaned event row must have been persisted.
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        count, 0,
+        "orphaned event row must not be persisted on invalid rail_service_id"
+    );
+}
