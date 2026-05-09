@@ -313,11 +313,11 @@ async fn dashboard_station_detail_returns_404_for_unknown_station(pool: sqlx::Pg
 
 #[sqlx::test]
 async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
-    let station_row = sqlx::query!("SELECT id, name, code FROM rail_stations LIMIT 1")
+    let (station_id, station_name, station_code): (Uuid, String, String) =
+        sqlx::query_as("SELECT id, name, code FROM rail_stations LIMIT 1")
         .fetch_one(&pool)
         .await
         .expect("seed station must exist");
-    let station_id = station_row.id;
 
     let app = pulse_event_ops::create_app(pool.clone());
     let response = app
@@ -338,8 +338,8 @@ async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx:
         .unwrap();
     let html = String::from_utf8(body.to_vec()).unwrap();
 
-    assert!(html.contains(&station_row.name));
-    assert!(html.contains(&station_row.code));
+    assert!(html.contains(&station_name));
+    assert!(html.contains(&station_code));
     assert!(html.contains("Staff Presence"));
     assert!(html.contains("Related Events"));
     assert!(html.contains("Region"));
