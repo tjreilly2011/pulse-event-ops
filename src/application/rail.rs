@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::event::EventStatus;
+use crate::domain::rail::StationContext;
 use crate::domain::rail::{
     RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot,
 };
@@ -53,6 +54,33 @@ pub async fn get_service_context(
         stops,
         staff,
         status_dot,
+        active_event_count: active_events.len() as i64,
+        active_events,
+    }))
+}
+
+pub async fn get_station_context(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<StationContext>, sqlx::Error> {
+    let Some(station) = rail_repo::get_station(pool, id).await? else {
+        return Ok(None);
+    };
+
+    let staff = rail_repo::get_staff_for_station(pool, id).await?;
+    let active_events = rail_repo::get_active_events_for_station(pool, id).await?;
+
+    let status = compute_status_dot(&active_events, &staff, "");
+    let active_event_count = active_events.len() as i64;
+    let staff_on_duty = staff.iter().filter(|s| s.status == "ON_DUTY").count() as i64;
+
+    Ok(Some(StationContext {
+        station,
+        status,
+        active_event_count,
+        staff_on_duty,
+        active_events,
+        staff,
     }))
 }
 

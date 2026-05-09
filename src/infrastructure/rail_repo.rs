@@ -152,3 +152,34 @@ pub async fn get_staff_for_service(
     .fetch_all(pool)
     .await
 }
+
+pub async fn get_active_events_for_station(
+    pool: &PgPool,
+    station_id: Uuid,
+) -> Result<Vec<Event>, sqlx::Error> {
+    sqlx::query_as::<_, Event>(
+        r#"
+        SELECT e.*
+        FROM events e
+        JOIN rail_event_context rec ON e.id = rec.event_id
+        WHERE rec.rail_station_id = $1
+          AND e.status IN ('CREATED', 'IN_PROGRESS')
+        ORDER BY e.created_at DESC
+        "#,
+    )
+    .bind(station_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn get_staff_for_station(
+    pool: &PgPool,
+    station_id: Uuid,
+) -> Result<Vec<StaffPresence>, sqlx::Error> {
+    sqlx::query_as::<_, StaffPresence>(
+        "SELECT * FROM staff_presence WHERE current_station_id = $1 ORDER BY last_seen_at DESC",
+    )
+    .bind(station_id)
+    .fetch_all(pool)
+    .await
+}

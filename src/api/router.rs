@@ -26,6 +26,7 @@ pub fn build(state: AppState) -> Router {
         .route("/rail/services/:id/context", get(rail::get_service_context))
         .route("/rail/stations", get(rail::list_stations))
         .route("/rail/stations/:id", get(rail::get_station_by_id))
+        .route("/rail/stations/:id/context", get(rail::get_station_context))
         .route("/rail/presence", get(rail::list_presence))
         // Rail dashboard routes
         .route(

@@ -126,3 +126,51 @@ async fn invalid_rail_service_id_does_not_persist_orphan_event(pool: sqlx::PgPoo
         "orphaned event row must not be persisted on invalid rail_service_id"
     );
 }
+
+#[sqlx::test]
+async fn station_context_returns_200_for_seeded_station(pool: sqlx::PgPool) {
+    let station_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_stations LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed station must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/rail/stations/{}/context", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json.get("station").is_some());
+    assert!(json.get("status").is_some());
+    assert!(json.get("active_event_count").is_some());
+    assert!(json.get("staff_on_duty").is_some());
+}
+
+#[sqlx::test]
+async fn station_context_returns_404_for_unknown_station(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/rail/stations/00000000-0000-0000-0000-000000000000/context")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}

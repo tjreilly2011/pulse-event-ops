@@ -101,3 +101,17 @@ pub async fn list_presence(State(pool): State<PgPool>) -> impl IntoResponse {
         }
     }
 }
+
+pub async fn get_station_context(
+    State(pool): State<PgPool>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    match application::rail::get_station_context(&pool, id).await {
+        Ok(Some(ctx)) => (StatusCode::OK, Json(ctx)).into_response(),
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get station context {}: {}", id, e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
