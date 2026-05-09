@@ -61,12 +61,15 @@ class _ReportEventScreenState extends State<ReportEventScreen> {
     if (_selectedType == null) return;
     setState(() => _isSubmitting = true);
     try {
+      final contextState = widget.selectedRailContext;
       await widget.apiService.createEvent(
         eventType: _selectedType!,
         title: _selectedLabel!,
         description: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
+        railServiceId: contextState?.selectedServiceId,
+        railStationId: contextState?.selectedStationId,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

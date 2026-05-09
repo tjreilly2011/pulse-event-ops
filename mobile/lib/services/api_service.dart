@@ -15,6 +15,8 @@ class ApiService {
     required String eventType,
     required String title,
     String? description,
+    String? railServiceId,
+    String? railStationId,
   }) async {
     final uri = Uri.parse('$kApiBaseUrl/events');
     final body = jsonEncode({
@@ -22,6 +24,10 @@ class ApiService {
       'title': title,
       if (description != null && description.isNotEmpty)
         'description': description,
+      if (railServiceId != null && railServiceId.isNotEmpty)
+        'rail_service_id': railServiceId,
+      if (railStationId != null && railStationId.isNotEmpty)
+        'rail_station_id': railStationId,
       'created_by': kCreatedByStub,
       'destination_location_id': kLocationPlaceholder,
     });

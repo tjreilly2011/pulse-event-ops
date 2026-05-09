@@ -13,6 +13,8 @@ class _FakeApiService extends ApiService {
     required String eventType,
     required String title,
     String? description,
+    String? railServiceId,
+    String? railStationId,
   }) async {
     throw UnimplementedError('Not used in smoke test');
   }
