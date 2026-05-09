@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Rail Stations</h1>
+</div>
+
+<div class="overflow-x-auto">
+  <table class="table table-zebra w-full">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Region</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for station in stations %}
+      <tr>
+        <td class="font-semibold">{{ station.name }}</td>
+        <td class="font-mono">{{ station.code }}</td>
+        <td>{{ station.region }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

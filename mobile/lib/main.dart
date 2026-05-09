@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/report_event_screen.dart';
 import 'screens/recent_events_screen.dart';
+import 'screens/rail_context_screen.dart';
 import 'services/api_service.dart';
 
 void main() {
@@ -64,6 +65,7 @@ class _AppShellState extends State<AppShell> {
     _screens = [
       ReportEventScreen(apiService: widget.apiService),
       RecentEventsScreen(apiService: widget.apiService),
+      RailContextScreen(apiService: widget.apiService),
     ];
   }
 
@@ -82,6 +84,10 @@ class _AppShellState extends State<AppShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.list),
             label: 'Recent',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.train),
+            label: 'Rail',
           ),
         ],
       ),
