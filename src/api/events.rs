@@ -9,7 +9,7 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::application::events::{
-    self as event_app, AcknowledgeError, AcknowledgeEventRequest, AddUpdateError,
+    self as event_app, AcknowledgeError, AcknowledgeEventRequest, AddUpdateError, CreateEventError,
 };
 use crate::domain::event::{CreateEventRequest, Event};
 use crate::domain::event_update::CreateEventUpdateRequest;
@@ -23,12 +23,15 @@ pub async fn create(
     event_app::create(&pool, &tx, req)
         .await
         .map(|event| (StatusCode::CREATED, Json(event)))
-        .map_err(|e| {
-            tracing::error!("Failed to create event: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-            )
+        .map_err(|e| match e {
+            CreateEventError::NotFound(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg),
+            CreateEventError::Db(db_err) => {
+                tracing::error!("Failed to create event: {}", db_err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
+            }
         })
 }
 

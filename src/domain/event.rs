@@ -71,4 +71,6 @@ pub struct CreateEventRequest {
     pub description: Option<String>,
     pub priority: Option<String>,
     pub vertical_metadata: Option<Value>,
+    pub rail_service_id: Option<Uuid>,
+    pub rail_station_id: Option<Uuid>,
 }

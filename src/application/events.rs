@@ -5,7 +5,13 @@ use uuid::Uuid;
 use crate::domain::event::{CreateEventRequest, Event, EventStatus};
 use crate::domain::event_update::{CreateEventUpdateRequest, EventUpdate};
 use crate::domain::sse_event::SseEvent;
-use crate::infrastructure::{event_repo, update_repo};
+use crate::infrastructure::{event_repo, rail_repo, update_repo};
+
+#[derive(Debug)]
+pub enum CreateEventError {
+    NotFound(String),
+    Db(sqlx::Error),
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct AcknowledgeEventRequest {
@@ -29,8 +35,42 @@ pub async fn create(
     pool: &PgPool,
     tx: &broadcast::Sender<SseEvent>,
     req: CreateEventRequest,
-) -> Result<Event, sqlx::Error> {
-    let event = event_repo::insert(pool, &req).await?;
+) -> Result<Event, CreateEventError> {
+    let event = event_repo::insert(pool, &req)
+        .await
+        .map_err(CreateEventError::Db)?;
+
+    if req.rail_service_id.is_some() || req.rail_station_id.is_some() {
+        if let Some(service_id) = req.rail_service_id {
+            let exists = rail_repo::validate_service_exists(pool, service_id)
+                .await
+                .map_err(CreateEventError::Db)?;
+            if !exists {
+                return Err(CreateEventError::NotFound(
+                    "rail_service_id not found".to_string(),
+                ));
+            }
+        }
+        if let Some(station_id) = req.rail_station_id {
+            let exists = rail_repo::validate_station_exists(pool, station_id)
+                .await
+                .map_err(CreateEventError::Db)?;
+            if !exists {
+                return Err(CreateEventError::NotFound(
+                    "rail_station_id not found".to_string(),
+                ));
+            }
+        }
+        rail_repo::insert_rail_event_context(
+            pool,
+            event.id,
+            req.rail_service_id,
+            req.rail_station_id,
+        )
+        .await
+        .map_err(CreateEventError::Db)?;
+    }
+
     let _ = tx.send(SseEvent::EventCreated {
         event: event.clone(),
     });
