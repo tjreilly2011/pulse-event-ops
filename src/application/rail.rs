@@ -178,4 +178,33 @@ mod tests {
         let dot = compute_status_dot(&[], &[], "CANCELLED");
         assert!(matches!(dot, StatusDot::Red));
     }
+
+    #[test]
+    fn station_status_green() {
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&[], &staff, "");
+        assert!(matches!(dot, StatusDot::Green));
+    }
+
+    #[test]
+    fn station_status_amber_no_staff() {
+        let dot = compute_status_dot(&[], &[], "");
+        assert!(matches!(dot, StatusDot::Amber));
+    }
+
+    #[test]
+    fn station_status_amber_non_critical_event() {
+        let events = vec![make_event("delay", EventStatus::InProgress)];
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&events, &staff, "");
+        assert!(matches!(dot, StatusDot::Amber));
+    }
+
+    #[test]
+    fn station_status_red_critical_event() {
+        let events = vec![make_event("safety_security", EventStatus::InProgress)];
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&events, &staff, "");
+        assert!(matches!(dot, StatusDot::Red));
+    }
 }
