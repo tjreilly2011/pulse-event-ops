@@ -9,6 +9,7 @@
   <table class="table table-zebra w-full">
     <thead>
       <tr>
+        <th>Status</th>
         <th>Name</th>
         <th>Code</th>
         <th>Region</th>
@@ -17,6 +18,9 @@
     <tbody>
       {% for station in stations %}
       <tr>
+        <td>
+          <span class="inline-block w-3 h-3 rounded-full {{ station.dot_class }}"></span>
+        </td>
         <td class="font-semibold">{{ station.name }}</td>
         <td class="font-mono">{{ station.code }}</td>
         <td>{{ station.region }}</td>
