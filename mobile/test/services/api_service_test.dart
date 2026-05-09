@@ -47,6 +47,42 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test('includes rail context IDs in payload when provided', () async {
+      late Map<String, dynamic> capturedBody;
+      final mockClient = MockClient((request) async {
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode(singleEventJson), 201);
+      });
+
+      final service = ApiService(client: mockClient);
+      await service.createEvent(
+        eventType: 'delay',
+        title: 'Train delayed',
+        railServiceId: 'svc-001',
+        railStationId: 'stn-001',
+      );
+
+      expect(capturedBody['rail_service_id'], 'svc-001');
+      expect(capturedBody['rail_station_id'], 'stn-001');
+    });
+
+    test('omits rail context IDs when not provided', () async {
+      late Map<String, dynamic> capturedBody;
+      final mockClient = MockClient((request) async {
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode(singleEventJson), 201);
+      });
+
+      final service = ApiService(client: mockClient);
+      await service.createEvent(
+        eventType: 'delay',
+        title: 'Train delayed',
+      );
+
+      expect(capturedBody.containsKey('rail_service_id'), isFalse);
+      expect(capturedBody.containsKey('rail_station_id'), isFalse);
+    });
   });
 
   group('ApiService.listEvents', () {

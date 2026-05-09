@@ -3,6 +3,7 @@ import 'screens/report_event_screen.dart';
 import 'screens/recent_events_screen.dart';
 import 'screens/rail_context_screen.dart';
 import 'services/api_service.dart';
+import 'state/selected_rail_context.dart';
 
 void main() {
   runApp(const PulseOpsApp());
@@ -58,21 +59,36 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
   late final List<Widget> _screens;
+  late final SelectedRailContext _selectedRailContext;
 
   @override
   void initState() {
     super.initState();
+    _selectedRailContext = SelectedRailContext();
     _screens = [
-      ReportEventScreen(apiService: widget.apiService),
+      ReportEventScreen(
+        apiService: widget.apiService,
+        selectedRailContext: _selectedRailContext,
+      ),
       RecentEventsScreen(apiService: widget.apiService),
-      RailContextScreen(apiService: widget.apiService),
+      RailContextScreen(
+        apiService: widget.apiService,
+        selectedRailContext: _selectedRailContext,
+      ),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
+    final railTabBottomInset = _currentIndex == 2
+        ? kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom
+        : 0.0;
+
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: Padding(
+        padding: EdgeInsets.only(bottom: railTabBottomInset),
+        child: _screens[_currentIndex],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

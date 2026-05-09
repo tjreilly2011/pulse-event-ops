@@ -5,9 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pulse_ops/models/event_model.dart';
 import 'package:pulse_ops/services/api_service.dart';
 import 'package:pulse_ops/screens/report_event_screen.dart';
+import 'package:pulse_ops/state/selected_rail_context.dart';
 
 class FakeApiService extends ApiService {
   bool shouldThrow;
+  String? capturedRailServiceId;
+  String? capturedRailStationId;
 
   FakeApiService({this.shouldThrow = false});
 
@@ -16,8 +19,12 @@ class FakeApiService extends ApiService {
     required String eventType,
     required String title,
     String? description,
+    String? railServiceId,
+    String? railStationId,
   }) async {
     if (shouldThrow) throw Exception('network error');
+    capturedRailServiceId = railServiceId;
+    capturedRailStationId = railStationId;
     return EventModel(
       id: 'test-id',
       eventType: eventType,
@@ -40,13 +47,21 @@ class _SlowFakeApiService extends ApiService {
     required String eventType,
     required String title,
     String? description,
+    String? railServiceId,
+    String? railStationId,
   }) =>
       _future;
 }
 
-Widget _buildScreen({ApiService? apiService}) {
+Widget _buildScreen({
+  ApiService? apiService,
+  SelectedRailContext? selectedRailContext,
+}) {
   return MaterialApp(
-    home: ReportEventScreen(apiService: apiService),
+    home: ReportEventScreen(
+      apiService: apiService,
+      selectedRailContext: selectedRailContext,
+    ),
   );
 }
 
@@ -139,5 +154,38 @@ void main() {
       destinationLocationId: 'station-euston',
     ));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+      '6. Submit auto-attaches fallback rail context IDs when no explicit selection',
+      (tester) async {
+    final selectedRailContext = SelectedRailContext()
+      ..applyFallback(
+        serviceId: 'svc-fallback',
+        serviceCode: 'NL-001',
+        stationId: 'stn-fallback',
+        stationName: 'Euston',
+      );
+
+    final fake = FakeApiService();
+    await tester.pumpWidget(
+      _buildScreen(
+        apiService: fake,
+        selectedRailContext: selectedRailContext,
+      ),
+    );
+
+    await tester.tap(find.text('Delay'));
+    await tester.pump();
+
+    final buttonFinder = find.widgetWithText(ElevatedButton, 'Send Event');
+    await tester.ensureVisible(buttonFinder);
+    await tester.pump();
+
+    await tester.tap(buttonFinder);
+    await tester.pumpAndSettle();
+
+    expect(fake.capturedRailServiceId, 'svc-fallback');
+    expect(fake.capturedRailStationId, 'stn-fallback');
   });
 }

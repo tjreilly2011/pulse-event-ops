@@ -95,3 +95,279 @@ async fn create_event_with_nonexistent_rail_service_id_returns_422(pool: sqlx::P
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test]
+async fn invalid_rail_service_id_does_not_persist_orphan_event(pool: sqlx::PgPool) {
+    let mut body = make_base_event_body();
+    body["rail_service_id"] = json!(Uuid::new_v4().to_string());
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/events")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    // No orphaned event row must have been persisted.
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        count, 0,
+        "orphaned event row must not be persisted on invalid rail_service_id"
+    );
+}
+
+#[sqlx::test]
+async fn station_context_returns_200_for_seeded_station(pool: sqlx::PgPool) {
+    let station_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_stations LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed station must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/rail/stations/{}/context", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json.get("station").is_some());
+    assert!(json.get("status").is_some());
+    assert!(json.get("active_event_count").is_some());
+    assert!(json.get("staff_on_duty").is_some());
+}
+
+#[sqlx::test]
+async fn station_context_returns_404_for_unknown_station(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/rail/stations/00000000-0000-0000-0000-000000000000/context")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_service_detail_returns_200_for_seeded_service(pool: sqlx::PgPool) {
+    let service_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_services LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed service must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/services/{}", service_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn dashboard_service_detail_returns_404_for_unknown_service(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/services/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_service_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
+    let service_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_services LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed service must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/services/{}", service_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("NL-001"));
+    assert!(html.contains("Service Status"));
+    assert!(html.contains("Related Events"));
+}
+
+#[sqlx::test]
+async fn dashboard_services_list_contains_context_summaries(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/services")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("Staff Availability"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("on duty") || html.contains(">-<"));
+    assert!(html.contains("active event"));
+}
+
+#[sqlx::test]
+async fn dashboard_station_detail_returns_200_for_seeded_station(pool: sqlx::PgPool) {
+    let station_id: Uuid = sqlx::query_scalar("SELECT id FROM rail_stations LIMIT 1")
+        .fetch_one(&pool)
+        .await
+        .expect("seed station must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/stations/{}", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn dashboard_station_detail_returns_404_for_unknown_station(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/stations/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx::PgPool) {
+    let (station_id, station_name, station_code): (Uuid, String, String) =
+        sqlx::query_as("SELECT id, name, code FROM rail_stations LIMIT 1")
+            .fetch_one(&pool)
+            .await
+            .expect("seed station must exist");
+
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(format!("/dashboard/rail/stations/{}", station_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains(&station_name));
+    assert!(html.contains(&station_code));
+    assert!(html.contains("Staff Presence"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("Region"));
+}
+
+#[sqlx::test]
+async fn dashboard_stations_list_contains_context_summaries(pool: sqlx::PgPool) {
+    let app = pulse_event_ops::create_app(pool.clone());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/dashboard/rail/stations")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+
+    assert!(html.contains("Staff Availability"));
+    assert!(html.contains("Related Events"));
+    assert!(html.contains("on duty") || html.contains(">-<"));
+    assert!(html.contains("active event"));
+}

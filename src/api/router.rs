@@ -26,6 +26,7 @@ pub fn build(state: AppState) -> Router {
         .route("/rail/services/:id/context", get(rail::get_service_context))
         .route("/rail/stations", get(rail::list_stations))
         .route("/rail/stations/:id", get(rail::get_station_by_id))
+        .route("/rail/stations/:id/context", get(rail::get_station_context))
         .route("/rail/presence", get(rail::list_presence))
         // Rail dashboard routes
         .route(
@@ -33,8 +34,16 @@ pub fn build(state: AppState) -> Router {
             get(rail_dashboard::services_page),
         )
         .route(
+            "/dashboard/rail/services/:id",
+            get(rail_dashboard::service_detail_page),
+        )
+        .route(
             "/dashboard/rail/stations",
             get(rail_dashboard::stations_page),
+        )
+        .route(
+            "/dashboard/rail/stations/:id",
+            get(rail_dashboard::station_detail_page),
         )
         // Dashboard routes — /feed must come before /:id
         .route("/dashboard/events", get(dashboard::feed_page))

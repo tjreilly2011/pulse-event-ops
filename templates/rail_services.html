@@ -13,6 +13,8 @@
         <th>Service Code</th>
         <th>Direction</th>
         <th>Service Status</th>
+        <th>Staff Availability</th>
+        <th>Related Events</th>
       </tr>
     </thead>
     <tbody>
@@ -21,11 +23,15 @@
         <td>
           <span class="inline-block w-3 h-3 rounded-full {{ service.dot_class }}"></span>
         </td>
-        <td class="font-mono">{{ service.service_code }}</td>
+        <td class="font-mono">
+          <a href="/dashboard/rail/services/{{ service.id }}" class="link link-primary">{{ service.service_code }}</a>
+        </td>
         <td>{{ service.direction }}</td>
         <td>
           <span class="badge badge-ghost">{{ service.status }}</span>
         </td>
+        <td>{{ service.staff_summary }}</td>
+        <td>{{ service.events_summary }}</td>
       </tr>
       {% endfor %}
     </tbody>

@@ -36,40 +36,55 @@ pub async fn create(
     tx: &broadcast::Sender<SseEvent>,
     req: CreateEventRequest,
 ) -> Result<Event, CreateEventError> {
-    let event = event_repo::insert(pool, &req)
-        .await
-        .map_err(CreateEventError::Db)?;
+    // Validate rail IDs FIRST — before any insert — to prevent orphaned event rows.
+    if let Some(service_id) = req.rail_service_id {
+        let exists = rail_repo::validate_service_exists(pool, service_id)
+            .await
+            .map_err(CreateEventError::Db)?;
+        if !exists {
+            return Err(CreateEventError::NotFound(
+                "rail_service_id not found".to_string(),
+            ));
+        }
+    }
+    if let Some(station_id) = req.rail_station_id {
+        let exists = rail_repo::validate_station_exists(pool, station_id)
+            .await
+            .map_err(CreateEventError::Db)?;
+        if !exists {
+            return Err(CreateEventError::NotFound(
+                "rail_station_id not found".to_string(),
+            ));
+        }
+    }
 
-    if req.rail_service_id.is_some() || req.rail_station_id.is_some() {
-        if let Some(service_id) = req.rail_service_id {
-            let exists = rail_repo::validate_service_exists(pool, service_id)
-                .await
-                .map_err(CreateEventError::Db)?;
-            if !exists {
-                return Err(CreateEventError::NotFound(
-                    "rail_service_id not found".to_string(),
-                ));
-            }
-        }
-        if let Some(station_id) = req.rail_station_id {
-            let exists = rail_repo::validate_station_exists(pool, station_id)
-                .await
-                .map_err(CreateEventError::Db)?;
-            if !exists {
-                return Err(CreateEventError::NotFound(
-                    "rail_station_id not found".to_string(),
-                ));
-            }
-        }
-        rail_repo::insert_rail_event_context(
-            pool,
+    let has_rail_context = req.rail_service_id.is_some() || req.rail_station_id.is_some();
+
+    let event = if has_rail_context {
+        // Atomically insert event + rail_event_context in a single transaction.
+        let mut db_tx = pool.begin().await.map_err(CreateEventError::Db)?;
+
+        let event = event_repo::insert_in_tx(&mut db_tx, &req)
+            .await
+            .map_err(CreateEventError::Db)?;
+
+        rail_repo::insert_rail_event_context_in_tx(
+            &mut db_tx,
             event.id,
             req.rail_service_id,
             req.rail_station_id,
         )
         .await
         .map_err(CreateEventError::Db)?;
-    }
+
+        db_tx.commit().await.map_err(CreateEventError::Db)?;
+
+        event
+    } else {
+        event_repo::insert(pool, &req)
+            .await
+            .map_err(CreateEventError::Db)?
+    };
 
     let _ = tx.send(SseEvent::EventCreated {
         event: event.clone(),

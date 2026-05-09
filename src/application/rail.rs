@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::event::EventStatus;
+use crate::domain::rail::StationContext;
 use crate::domain::rail::{
     RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot,
 };
@@ -53,6 +54,33 @@ pub async fn get_service_context(
         stops,
         staff,
         status_dot,
+        active_event_count: active_events.len() as i64,
+        active_events,
+    }))
+}
+
+pub async fn get_station_context(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<StationContext>, sqlx::Error> {
+    let Some(station) = rail_repo::get_station(pool, id).await? else {
+        return Ok(None);
+    };
+
+    let staff = rail_repo::get_staff_for_station(pool, id).await?;
+    let active_events = rail_repo::get_active_events_for_station(pool, id).await?;
+
+    let status = compute_status_dot(&active_events, &staff, "");
+    let active_event_count = active_events.len() as i64;
+    let staff_on_duty = staff.iter().filter(|s| s.status == "ON_DUTY").count() as i64;
+
+    Ok(Some(StationContext {
+        station,
+        status,
+        active_event_count,
+        staff_on_duty,
+        active_events,
+        staff,
     }))
 }
 
@@ -148,6 +176,35 @@ mod tests {
     #[test]
     fn test_red_cancelled_service_no_events_no_staff() {
         let dot = compute_status_dot(&[], &[], "CANCELLED");
+        assert!(matches!(dot, StatusDot::Red));
+    }
+
+    #[test]
+    fn station_status_green() {
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&[], &staff, "");
+        assert!(matches!(dot, StatusDot::Green));
+    }
+
+    #[test]
+    fn station_status_amber_no_staff() {
+        let dot = compute_status_dot(&[], &[], "");
+        assert!(matches!(dot, StatusDot::Amber));
+    }
+
+    #[test]
+    fn station_status_amber_non_critical_event() {
+        let events = vec![make_event("delay", EventStatus::InProgress)];
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&events, &staff, "");
+        assert!(matches!(dot, StatusDot::Amber));
+    }
+
+    #[test]
+    fn station_status_red_critical_event() {
+        let events = vec![make_event("safety_security", EventStatus::InProgress)];
+        let staff = vec![make_staff("ON_DUTY")];
+        let dot = compute_status_dot(&events, &staff, "");
         assert!(matches!(dot, StatusDot::Red));
     }
 }

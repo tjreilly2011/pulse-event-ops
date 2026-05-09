@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::domain::event::Event;
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct RailRoute {
     pub id: Uuid,
@@ -69,10 +71,22 @@ pub enum StatusDot {
     Red,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ServiceContext {
     pub service: RailService,
     pub stops: Vec<RailServiceStop>,
     pub staff: Vec<StaffPresence>,
     pub status_dot: StatusDot,
+    pub active_event_count: i64,
+    pub active_events: Vec<Event>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StationContext {
+    pub station: RailStation,
+    pub status: StatusDot,
+    pub active_event_count: i64,
+    pub staff_on_duty: i64,
+    pub active_events: Vec<Event>,
+    pub staff: Vec<StaffPresence>,
 }
