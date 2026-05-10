@@ -58,6 +58,12 @@ struct StopRow {
     scheduled_departure: String,
 }
 
+struct StationServiceRow {
+    service_id: String,
+    service_code: String,
+    direction: String,
+}
+
 // ─── Template structs ────────────────────────────────────────────────────────
 
 #[derive(Template)]
@@ -106,6 +112,7 @@ struct RailStationDetailTemplate {
     active_event_count: i64,
     staff_total_count: usize,
     staff_on_duty_count: i64,
+    stopping_services: Vec<StationServiceRow>,
     events: Vec<EventRow>,
     staff: Vec<StaffRow>,
 }
@@ -402,6 +409,22 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         }
     };
 
+    let stopping_services = match rail::list_services_for_station(&pool, id).await {
+        Ok(services) => services,
+        Err(e) => {
+            tracing::error!(
+                "rail station_detail_page stopping_services error for {}: {}",
+                id,
+                e
+            );
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load rail station detail",
+            )
+                .into_response();
+        }
+    };
+
     let station = context.station;
     let station_id = station.id.to_string();
     let station_name = station.name;
@@ -423,6 +446,15 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         .map(map_staff_row)
         .collect::<Vec<_>>();
 
+    let stopping_services = stopping_services
+        .into_iter()
+        .map(|service| StationServiceRow {
+            service_id: service.service_id.to_string(),
+            service_code: service.service_code,
+            direction: service.direction,
+        })
+        .collect::<Vec<_>>();
+
     render(RailStationDetailTemplate {
         station_id,
         station_name,
@@ -432,6 +464,7 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         active_event_count,
         staff_total_count,
         staff_on_duty_count,
+        stopping_services,
         events,
         staff,
     })

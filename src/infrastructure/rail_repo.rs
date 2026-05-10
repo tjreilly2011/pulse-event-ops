@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::domain::event::Event;
 use crate::domain::rail::{
     RailEventContext, RailRoute, RailService, RailServiceStop, RailServiceStopTimelineItem,
-    RailStation, StaffPresence,
+    RailStation, StaffPresence, StationServiceStopSummary,
 };
 
 pub async fn list_routes(pool: &PgPool) -> Result<Vec<RailRoute>, sqlx::Error> {
@@ -72,6 +72,27 @@ pub async fn get_station(pool: &PgPool, id: Uuid) -> Result<Option<RailStation>,
         .bind(id)
         .fetch_optional(pool)
         .await
+}
+
+pub async fn list_services_for_station(
+    pool: &PgPool,
+    station_id: Uuid,
+) -> Result<Vec<StationServiceStopSummary>, sqlx::Error> {
+    sqlx::query_as::<_, StationServiceStopSummary>(
+        r#"
+        SELECT DISTINCT
+            svc.id AS service_id,
+            svc.service_code,
+            svc.direction
+        FROM rail_service_stops rss
+        JOIN rail_services svc ON svc.id = rss.service_id
+        WHERE rss.station_id = $1
+        ORDER BY svc.service_code ASC
+        "#,
+    )
+    .bind(station_id)
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn list_presence(pool: &PgPool) -> Result<Vec<StaffPresence>, sqlx::Error> {

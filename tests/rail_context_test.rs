@@ -415,6 +415,12 @@ async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx:
             .fetch_one(&pool)
             .await
             .expect("seed station must exist");
+    let (service_id, service_code): (Uuid, String) = sqlx::query_as(
+        "SELECT id, service_code FROM rail_services WHERE service_code = 'IE-WPT-HST-001'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed service must exist");
 
     let app = pulse_event_ops::create_app(pool.clone());
     let response = app
@@ -437,6 +443,9 @@ async fn dashboard_station_detail_contains_expected_context_sections(pool: sqlx:
 
     assert!(html.contains(&station_name));
     assert!(html.contains(&station_code));
+    assert!(html.contains("Stopping Services"));
+    assert!(html.contains(&service_code));
+    assert!(html.contains(&format!("/dashboard/rail/services/{}", service_id)));
     assert!(html.contains("Staff Presence"));
     assert!(html.contains("Related Events"));
     assert!(html.contains("Region"));

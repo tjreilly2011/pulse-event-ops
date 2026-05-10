@@ -22,6 +22,7 @@ class RailContextScreen extends StatefulWidget {
 }
 
 class _RailContextScreenState extends State<RailContextScreen> {
+  static const int _defaultUpcomingStopCount = 3;
   late Future<_RailContextData> _future;
   final Map<String, List<RailServiceStopModel>> _stopsByServiceId = {};
   String? _selectedServiceId;
@@ -47,6 +48,9 @@ class _RailContextScreenState extends State<RailContextScreen> {
     final data = _RailContextData(
       services: services,
       stationsById: {for (final station in stations) station.id: station},
+      stationsByCode: {
+        for (final station in stations) station.code.toUpperCase(): station,
+      },
     );
     await _applyFallbackIfNeeded(data);
     await _loadSelectedContextBlocks(triggerSetState: false);
@@ -70,7 +74,10 @@ class _RailContextScreenState extends State<RailContextScreen> {
     return services.firstWhere(_isActiveService, orElse: () => services.first);
   }
 
-  String? _pickCurrentOrFirstStopStationId(List<RailServiceStopModel> stops) {
+  String? _pickCurrentOrFirstStopStationId(
+    List<RailServiceStopModel> stops, {
+    Map<String, RailStationModel>? stationsByCode,
+  }) {
     if (stops.isEmpty) return null;
 
     final orderedStops = [...stops]
@@ -82,17 +89,28 @@ class _RailContextScreenState extends State<RailContextScreen> {
       final departure = stop.scheduledDeparture?.toUtc();
       if (arrival != null && departure != null) {
         if (!now.isBefore(arrival) && !now.isAfter(departure)) {
-          return stop.stationId;
+          return stop.stationId ??
+              (stop.stationCode == null
+                  ? null
+                  : stationsByCode?[stop.stationCode!.toUpperCase()]?.id);
         }
       }
     }
 
-    return orderedStops
-        .firstWhere(
-          (stop) => stop.stationId != null,
-          orElse: () => orderedStops.first,
-        )
-        .stationId;
+    for (final stop in orderedStops) {
+      if (stop.stationId != null) {
+        return stop.stationId;
+      }
+      final code = stop.stationCode;
+      if (code != null) {
+        final mapped = stationsByCode?[code.toUpperCase()];
+        if (mapped != null) {
+          return mapped.id;
+        }
+      }
+    }
+
+    return null;
   }
 
   Future<List<RailServiceStopModel>> _stopsForService(String serviceId) async {
@@ -117,7 +135,10 @@ class _RailContextScreenState extends State<RailContextScreen> {
 
     final fallbackService = _pickFallbackService(data.services);
     final stops = await _stopsForService(fallbackService.id);
-    final fallbackStationId = _pickCurrentOrFirstStopStationId(stops);
+    final fallbackStationId = _pickCurrentOrFirstStopStationId(
+      stops,
+      stationsByCode: data.stationsByCode,
+    );
     if (fallbackStationId == null) return;
 
     final fallbackStation = data.stationsById[fallbackStationId];
@@ -145,13 +166,24 @@ class _RailContextScreenState extends State<RailContextScreen> {
       serviceId: service.id,
       serviceCode: service.serviceCode,
     );
+    widget.selectedRailContext.clearStation();
 
     final stops = await _stopsForService(service.id);
-    final stationId = _pickCurrentOrFirstStopStationId(stops);
-    if (!mounted || stationId == null) return;
+    final stationId = _pickCurrentOrFirstStopStationId(
+      stops,
+      stationsByCode: data.stationsByCode,
+    );
+    if (!mounted) return;
+    if (stationId == null) {
+      await _loadSelectedContextBlocks();
+      return;
+    }
 
     final station = data.stationsById[stationId];
-    if (station == null) return;
+    if (station == null) {
+      await _loadSelectedContextBlocks();
+      return;
+    }
 
     setState(() {
       _selectedStationId = station.id;
@@ -292,6 +324,51 @@ class _RailContextScreenState extends State<RailContextScreen> {
         .join(' ');
   }
 
+  List<RailServiceStopModel> _orderedStops(List<RailServiceStopModel> stops) {
+    final orderedStops = [...stops]
+      ..sort((a, b) => a.stopSequence.compareTo(b.stopSequence));
+    return orderedStops;
+  }
+
+  List<_ResolvedStop> _resolveStops(
+    List<RailServiceStopModel> stops,
+    Map<String, RailStationModel> stationsById,
+    Map<String, RailStationModel> stationsByCode,
+  ) {
+    return _orderedStops(stops)
+        .map(
+          (stop) => _ResolvedStop(
+            stop: stop,
+            station: stop.stationId != null
+                ? stationsById[stop.stationId!]
+                : (stop.stationCode == null
+                    ? null
+                    : stationsByCode[stop.stationCode!.toUpperCase()]),
+          ),
+        )
+        .where((resolved) => resolved.station != null)
+        .toList();
+  }
+
+  List<_ResolvedStop> _upcomingResolvedStops(
+    List<_ResolvedStop> stops,
+    String? selectedStationId,
+  ) {
+    if (stops.isEmpty) {
+      return const <_ResolvedStop>[];
+    }
+
+    final selectedIndex = selectedStationId == null
+        ? -1
+        : stops.indexWhere((stop) => stop.station!.id == selectedStationId);
+    final startIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    final endIndex = startIndex + _defaultUpcomingStopCount;
+    return stops.sublist(
+      startIndex,
+      endIndex > stops.length ? stops.length : endIndex,
+    );
+  }
+
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
@@ -302,7 +379,10 @@ class _RailContextScreenState extends State<RailContextScreen> {
     );
   }
 
-  Widget _buildServiceContextCard() {
+  Widget _buildServiceContextCard({
+    required List<_ResolvedStop> resolvedStops,
+    required String? selectedStationId,
+  }) {
     final selectedService = _serviceContext?.service;
     if (selectedService == null) {
       return const Padding(
@@ -310,6 +390,15 @@ class _RailContextScreenState extends State<RailContextScreen> {
         child: Text('Service context unavailable for the current selection.'),
       );
     }
+
+    final origin = resolvedStops.firstOrNull?.station;
+    final destination = resolvedStops.lastOrNull?.station;
+    final selectedOrCurrentStation = selectedStationId == null
+        ? null
+        : resolvedStops
+            .where((stop) => stop.station!.id == selectedStationId)
+            .map((stop) => stop.station)
+            .firstOrNull;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -323,6 +412,15 @@ class _RailContextScreenState extends State<RailContextScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 4),
+            if (origin != null)
+              Text('Origin: ${origin.name} (${origin.code})'),
+            if (destination != null)
+              Text('Destination: ${destination.name} (${destination.code})'),
+            if (selectedOrCurrentStation != null)
+              Text(
+                'Selected/current: '
+                '${selectedOrCurrentStation.name} (${selectedOrCurrentStation.code})',
+              ),
             Text('Direction: ${selectedService.direction}'),
             Text('Status: ${_formatLabel(selectedService.status)}'),
           ],
@@ -379,6 +477,64 @@ class _RailContextScreenState extends State<RailContextScreen> {
             Text('Staff on duty: ${stationContext.staffOnDuty}'),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingStopsSection(List<_ResolvedStop> upcomingStops) {
+    if (upcomingStops.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Text('No upcoming stops available.'),
+      );
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final stop in upcomingStops)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  '${stop.station!.name} (${stop.station!.code})',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullStopListSection(
+    List<_ResolvedStop> resolvedStops,
+    String? selectedStationId,
+  ) {
+    if (resolvedStops.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: ExpansionTile(
+        title: const Text('Full stop list'),
+        children: [
+          for (final resolvedStop in resolvedStops)
+            ListTile(
+              dense: true,
+              leading: Text('${resolvedStop.stop.stopSequence}.'),
+              title: Text(
+                '${resolvedStop.station!.name} (${resolvedStop.station!.code})',
+              ),
+              trailing: selectedStationId == resolvedStop.station!.id
+                  ? const Icon(Icons.radio_button_checked, size: 16)
+                  : null,
+              onTap: () => _onStationSelected(resolvedStop.station!),
+            ),
+        ],
       ),
     );
   }
@@ -516,6 +672,23 @@ class _RailContextScreenState extends State<RailContextScreen> {
               ? const <RailServiceStopModel>[]
               : (_stopsByServiceId[selectedService.id] ??
                     const <RailServiceStopModel>[]);
+          final resolvedStops = data == null
+              ? const <_ResolvedStop>[]
+              : _resolveStops(
+                  selectedStops,
+                  data.stationsById,
+                  data.stationsByCode,
+                );
+          final fallbackCurrentStationId = _pickCurrentOrFirstStopStationId(
+            selectedStops,
+            stationsByCode: data?.stationsByCode,
+          );
+          final selectedOrCurrentStationId =
+              selectedStationId ?? fallbackCurrentStationId;
+          final upcomingStops = _upcomingResolvedStops(
+            resolvedStops,
+            selectedOrCurrentStationId,
+          );
 
           return RefreshIndicator(
             onRefresh: _refresh,
@@ -574,17 +747,16 @@ class _RailContextScreenState extends State<RailContextScreen> {
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: selectedStops
-                            .map((stop) => stop.stationId)
-                            .whereType<String>()
-                            .map((stationId) => data!.stationsById[stationId])
+                        children: upcomingStops
+                            .map((resolvedStop) => resolvedStop.station)
                             .whereType<RailStationModel>()
                             .map(
                               (station) => ChoiceChip(
                                 label: Text(
                                   '${station.name} (${station.code})',
                                 ),
-                                selected: selectedStationId == station.id,
+                                selected:
+                                    selectedOrCurrentStationId == station.id,
                                 onSelected: (_) => _onStationSelected(station),
                               ),
                             )
@@ -624,7 +796,16 @@ class _RailContextScreenState extends State<RailContextScreen> {
                     )
                   else ...[
                     _sectionTitle('Selected service'),
-                    _buildServiceContextCard(),
+                    _buildServiceContextCard(
+                      resolvedStops: resolvedStops,
+                      selectedStationId: selectedOrCurrentStationId,
+                    ),
+                    _sectionTitle('Next stops'),
+                    _buildUpcomingStopsSection(upcomingStops),
+                    _buildFullStopListSection(
+                      resolvedStops,
+                      selectedOrCurrentStationId,
+                    ),
                     _sectionTitle('Station context'),
                     _buildStationContextCard(),
                     _sectionTitle('Related events'),
@@ -650,10 +831,24 @@ class _RailContextScreenState extends State<RailContextScreen> {
 class _RailContextData {
   final List<RailServiceModel> services;
   final Map<String, RailStationModel> stationsById;
+  final Map<String, RailStationModel> stationsByCode;
 
-  const _RailContextData({required this.services, required this.stationsById});
+  const _RailContextData({
+    required this.services,
+    required this.stationsById,
+    required this.stationsByCode,
+  });
+}
+
+class _ResolvedStop {
+  final RailServiceStopModel stop;
+  final RailStationModel? station;
+
+  const _ResolvedStop({required this.stop, required this.station});
 }
 
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+
+  T? get lastOrNull => isEmpty ? null : last;
 }

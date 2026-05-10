@@ -84,6 +84,21 @@ The rail endpoints expose the generic rail entities plus the shipped context pay
 | GET    | `/rail/stations/:id/context` | 200    | Station context payload with `station`, `status`, `active_event_count`, `staff_on_duty`, `active_events`, and `staff` |
 | GET    | `/rail/presence`             | 200    | List staff presence rows |
 
+### Sprint 11 Rail Seed Data
+
+Sprint 11 seed data is intentionally limited to realistic curated routes only. The old Northern Line demo seed has been fully replaced.
+
+The shipped example services are:
+
+- `IE-WPT-HST-001` — Westport -> Dublin Heuston
+- `GB-WAT-KGN-001` — London Waterloo -> Kingston
+
+No legacy Northern Line demo routes or services are shipped in Sprint 11 seed data.
+
+Station codes are intentionally stable demo codes where official identifiers are uncertain. That keeps the dataset deterministic for tests and UI work without pretending to be a full GTFS or NaPTAN import.
+
+Full GTFS / NaPTAN ingestion is deferred to future work in a later sprint. The MVP goal here is coherent routes, coherent stations, coherent services, coherent stop timelines, and coherent event attachment.
+
 ### Realtime — SSE Stream
 
 The `GET /events/stream` endpoint streams server-sent events (SSE) to any connected client. Connect with:

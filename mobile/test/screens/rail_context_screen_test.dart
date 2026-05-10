@@ -250,7 +250,7 @@ void main() {
     expect(contextState.selectedServiceId, 'svc-2');
     expect(contextState.selectedServiceCode, 'NL-002');
 
-    await tester.tap(find.text('Highbury (HBI)'));
+    await tester.tap(find.text('Highbury (HBI)').first);
     await tester.pumpAndSettle();
 
     expect(contextState.selectedStationId, 'st-c');
@@ -334,6 +334,377 @@ void main() {
   );
 
   testWidgets(
+    'service card shows origin destination and selected current station',
+    (tester) async {
+      final now = DateTime.now().toUtc();
+      final contextState = SelectedRailContext();
+      final api = _FakeRailApiService(
+        services: const [
+          RailServiceModel(
+            id: 'svc-1',
+            serviceCode: 'NL-001',
+            routeId: null,
+            direction: 'southbound',
+            status: 'ON_TIME',
+          ),
+        ],
+        stations: const [
+          RailStationModel(id: 'st-a', name: 'Westport', code: 'WPT'),
+          RailStationModel(id: 'st-b', name: 'Athlone', code: 'ATL'),
+          RailStationModel(id: 'st-c', name: 'Heuston', code: 'HST'),
+        ],
+        stopsByServiceId: {
+          'svc-1': [
+            RailServiceStopModel(
+              id: 'stop-1',
+              serviceId: 'svc-1',
+              stationId: 'st-a',
+              scheduledArrival: now.subtract(const Duration(minutes: 20)),
+              scheduledDeparture: now.subtract(const Duration(minutes: 18)),
+              stopSequence: 1,
+            ),
+            RailServiceStopModel(
+              id: 'stop-2',
+              serviceId: 'svc-1',
+              stationId: 'st-b',
+              scheduledArrival: now.subtract(const Duration(minutes: 2)),
+              scheduledDeparture: now.add(const Duration(minutes: 2)),
+              stopSequence: 2,
+            ),
+            RailServiceStopModel(
+              id: 'stop-3',
+              serviceId: 'svc-1',
+              stationId: 'st-c',
+              scheduledArrival: now.add(const Duration(minutes: 20)),
+              scheduledDeparture: now.add(const Duration(minutes: 23)),
+              stopSequence: 3,
+            ),
+          ],
+        },
+        serviceContexts: {
+          'svc-1': buildServiceContext(
+            serviceId: 'svc-1',
+            stationId: 'st-b',
+            statusDot: 'Green',
+            events: defaultEvents,
+            staff: defaultStaff,
+          ),
+        },
+        stationContexts: {
+          'st-b': buildStationContext(
+            stationId: 'st-b',
+            events: defaultEvents,
+            staff: defaultStaff,
+          ),
+        },
+      );
+
+      await tester.pumpWidget(
+        _buildScreen(apiService: api, selectedRailContext: contextState),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Selected service'), 200);
+
+      expect(find.text('Origin: Westport (WPT)'), findsOneWidget);
+      expect(find.text('Destination: Heuston (HST)'), findsOneWidget);
+      expect(find.text('Selected/current: Athlone (ATL)'), findsOneWidget);
+    },
+  );
+
+  testWidgets('next few stops are visible by default', (tester) async {
+    final now = DateTime.now().toUtc();
+    final contextState = SelectedRailContext();
+    final api = _FakeRailApiService(
+      services: const [
+        RailServiceModel(
+          id: 'svc-1',
+          serviceCode: 'NL-001',
+          routeId: null,
+          direction: 'southbound',
+          status: 'ON_TIME',
+        ),
+      ],
+      stations: const [
+        RailStationModel(id: 'st-a', name: 'A', code: 'A'),
+        RailStationModel(id: 'st-b', name: 'B', code: 'B'),
+        RailStationModel(id: 'st-c', name: 'C', code: 'C'),
+        RailStationModel(id: 'st-d', name: 'D', code: 'D'),
+        RailStationModel(id: 'st-e', name: 'E', code: 'E'),
+      ],
+      stopsByServiceId: {
+        'svc-1': [
+          RailServiceStopModel(
+            id: 'stop-1',
+            serviceId: 'svc-1',
+            stationId: 'st-a',
+            scheduledArrival: now.subtract(const Duration(minutes: 20)),
+            scheduledDeparture: now.subtract(const Duration(minutes: 18)),
+            stopSequence: 1,
+          ),
+          RailServiceStopModel(
+            id: 'stop-2',
+            serviceId: 'svc-1',
+            stationId: 'st-b',
+            scheduledArrival: now.subtract(const Duration(minutes: 2)),
+            scheduledDeparture: now.add(const Duration(minutes: 2)),
+            stopSequence: 2,
+          ),
+          RailServiceStopModel(
+            id: 'stop-3',
+            serviceId: 'svc-1',
+            stationId: 'st-c',
+            scheduledArrival: now.add(const Duration(minutes: 8)),
+            scheduledDeparture: now.add(const Duration(minutes: 10)),
+            stopSequence: 3,
+          ),
+          RailServiceStopModel(
+            id: 'stop-4',
+            serviceId: 'svc-1',
+            stationId: 'st-d',
+            scheduledArrival: now.add(const Duration(minutes: 18)),
+            scheduledDeparture: now.add(const Duration(minutes: 20)),
+            stopSequence: 4,
+          ),
+          RailServiceStopModel(
+            id: 'stop-5',
+            serviceId: 'svc-1',
+            stationId: 'st-e',
+            scheduledArrival: now.add(const Duration(minutes: 28)),
+            scheduledDeparture: now.add(const Duration(minutes: 30)),
+            stopSequence: 5,
+          ),
+        ],
+      },
+      serviceContexts: {
+        'svc-1': buildServiceContext(
+          serviceId: 'svc-1',
+          stationId: 'st-b',
+          statusDot: 'Green',
+          events: defaultEvents,
+          staff: defaultStaff,
+        ),
+      },
+      stationContexts: {
+        'st-b': buildStationContext(
+          stationId: 'st-b',
+          events: defaultEvents,
+          staff: defaultStaff,
+        ),
+      },
+    );
+
+    await tester.pumpWidget(
+      _buildScreen(apiService: api, selectedRailContext: contextState),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Next stops'), 200);
+
+    expect(find.text('B (B)'), findsWidgets);
+    expect(find.text('C (C)'), findsWidgets);
+    expect(find.text('D (D)'), findsWidgets);
+    expect(find.text('E (E)'), findsNothing);
+  });
+
+  testWidgets('full stop list expands and collapses', (tester) async {
+    final now = DateTime.now().toUtc();
+    final contextState = SelectedRailContext();
+    final api = _FakeRailApiService(
+      services: const [
+        RailServiceModel(
+          id: 'svc-1',
+          serviceCode: 'NL-001',
+          routeId: null,
+          direction: 'southbound',
+          status: 'ON_TIME',
+        ),
+      ],
+      stations: const [
+        RailStationModel(id: 'st-a', name: 'A', code: 'A'),
+        RailStationModel(id: 'st-b', name: 'B', code: 'B'),
+        RailStationModel(id: 'st-c', name: 'C', code: 'C'),
+        RailStationModel(id: 'st-d', name: 'D', code: 'D'),
+      ],
+      stopsByServiceId: {
+        'svc-1': [
+          RailServiceStopModel(
+            id: 'stop-1',
+            serviceId: 'svc-1',
+            stationId: 'st-a',
+            scheduledArrival: now.subtract(const Duration(minutes: 20)),
+            scheduledDeparture: now.subtract(const Duration(minutes: 18)),
+            stopSequence: 1,
+          ),
+          RailServiceStopModel(
+            id: 'stop-2',
+            serviceId: 'svc-1',
+            stationId: 'st-b',
+            scheduledArrival: now.subtract(const Duration(minutes: 2)),
+            scheduledDeparture: now.add(const Duration(minutes: 2)),
+            stopSequence: 2,
+          ),
+          RailServiceStopModel(
+            id: 'stop-3',
+            serviceId: 'svc-1',
+            stationId: 'st-c',
+            scheduledArrival: now.add(const Duration(minutes: 8)),
+            scheduledDeparture: now.add(const Duration(minutes: 10)),
+            stopSequence: 3,
+          ),
+          RailServiceStopModel(
+            id: 'stop-4',
+            serviceId: 'svc-1',
+            stationId: 'st-d',
+            scheduledArrival: now.add(const Duration(minutes: 18)),
+            scheduledDeparture: now.add(const Duration(minutes: 20)),
+            stopSequence: 4,
+          ),
+        ],
+      },
+      serviceContexts: {
+        'svc-1': buildServiceContext(
+          serviceId: 'svc-1',
+          stationId: 'st-b',
+          statusDot: 'Green',
+          events: defaultEvents,
+          staff: defaultStaff,
+        ),
+      },
+      stationContexts: {
+        'st-b': buildStationContext(
+          stationId: 'st-b',
+          events: defaultEvents,
+          staff: defaultStaff,
+        ),
+      },
+    );
+
+    await tester.pumpWidget(
+      _buildScreen(apiService: api, selectedRailContext: contextState),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Full stop list'), 200);
+
+    expect(find.text('4.'), findsNothing);
+
+    await tester.tap(find.text('Full stop list'));
+    await tester.pumpAndSettle();
+    expect(find.text('4.'), findsOneWidget);
+    expect(find.text('D (D)'), findsWidgets);
+
+    await tester.tap(find.text('Full stop list'));
+    await tester.pumpAndSettle();
+    expect(find.text('4.'), findsNothing);
+  });
+
+  testWidgets(
+    'switching services rebinds station context for timeline-style stops',
+    (tester) async {
+      final contextState = SelectedRailContext();
+      final api = _FakeRailApiService(
+        services: const [
+          RailServiceModel(
+            id: 'svc-ie',
+            serviceCode: 'IE-WPT-HST-001',
+            routeId: null,
+            direction: 'eastbound',
+            status: 'ON_TIME',
+          ),
+          RailServiceModel(
+            id: 'svc-gb',
+            serviceCode: 'GB-WAT-KGN-001',
+            routeId: null,
+            direction: 'outbound',
+            status: 'ON_TIME',
+          ),
+        ],
+        stations: const [
+          RailStationModel(id: 'st-wpt', name: 'Westport', code: 'WPT'),
+          RailStationModel(
+            id: 'st-wat',
+            name: 'London Waterloo',
+            code: 'WAT',
+          ),
+        ],
+        stopsByServiceId: {
+          'svc-ie': [
+            RailServiceStopModel(
+              id: 'timeline-1-WPT',
+              serviceId: null,
+              stationId: null,
+              stationName: 'Westport',
+              stationCode: 'WPT',
+              scheduledArrival: DateTime.utc(2026, 1, 1, 10, 0),
+              scheduledDeparture: DateTime.utc(2026, 1, 1, 10, 2),
+              stopSequence: 1,
+            ),
+          ],
+          'svc-gb': [
+            RailServiceStopModel(
+              id: 'timeline-1-WAT',
+              serviceId: null,
+              stationId: null,
+              stationName: 'London Waterloo',
+              stationCode: 'WAT',
+              scheduledArrival: DateTime.utc(2026, 1, 1, 11, 0),
+              scheduledDeparture: DateTime.utc(2026, 1, 1, 11, 2),
+              stopSequence: 1,
+            ),
+          ],
+        },
+        serviceContexts: {
+          'svc-ie': buildServiceContext(
+            serviceId: 'svc-ie',
+            stationId: 'st-wpt',
+            statusDot: 'Green',
+            events: defaultEvents,
+            staff: defaultStaff,
+          ),
+          'svc-gb': buildServiceContext(
+            serviceId: 'svc-gb',
+            stationId: 'st-wat',
+            statusDot: 'Green',
+            events: defaultEvents,
+            staff: defaultStaff,
+          ),
+        },
+        stationContexts: {
+          'st-wpt': buildStationContext(
+            stationId: 'st-wpt',
+            events: defaultEvents,
+            staff: defaultStaff,
+          ),
+          'st-wat': RailStationContextResponseModel.fromJson({
+            'station': {
+              'id': 'st-wat',
+              'name': 'London Waterloo',
+              'code': 'WAT',
+            },
+            'status': 'Amber',
+            'active_event_count': 0,
+            'staff_on_duty': 1,
+            'active_events': const [],
+            'staff': defaultStaff,
+          }),
+        },
+      );
+
+      await tester.pumpWidget(
+        _buildScreen(apiService: api, selectedRailContext: contextState),
+      );
+      await tester.pumpAndSettle();
+
+      expect(contextState.selectedStationId, 'st-wpt');
+
+      await tester.tap(find.text('GB-WAT-KGN-001').first);
+      await tester.pumpAndSettle();
+
+      expect(contextState.selectedServiceId, 'svc-gb');
+      expect(contextState.selectedStationId, 'st-wat');
+      expect(find.text('London Waterloo (WAT)'), findsWidgets);
+    },
+  );
+
+  testWidgets(
     'renders service card, station context, related events and staff summary blocks',
     (tester) async {
       final contextState = SelectedRailContext();
@@ -384,12 +755,16 @@ void main() {
         _buildScreen(apiService: api, selectedRailContext: contextState),
       );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Staff summary'), 200);
 
       expect(find.text('Selected service'), findsOneWidget);
       expect(find.text('NL-001'), findsWidgets);
+      expect(find.text('Origin: Euston (EUS)'), findsOneWidget);
+      expect(find.text('Destination: Euston (EUS)'), findsOneWidget);
+      expect(find.text('Selected/current: Euston (EUS)'), findsOneWidget);
       expect(find.text('Direction: southbound'), findsOneWidget);
       expect(find.text('Status: On Time'), findsWidgets);
+
+      await tester.scrollUntilVisible(find.text('Staff summary'), 200);
 
       expect(find.text('Station context'), findsOneWidget);
       expect(find.text('Euston (EUS)'), findsWidgets);
