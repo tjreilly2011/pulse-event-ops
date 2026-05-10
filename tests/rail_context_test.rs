@@ -327,8 +327,19 @@ async fn dashboard_service_detail_contains_expected_context_sections(pool: sqlx:
     let html = String::from_utf8(body.to_vec()).unwrap();
 
     assert!(html.contains("IE-WPT-HST-001"));
+    assert!(html.contains("Route Timeline"));
+    assert!(html.contains("Westport (WPT) -&gt; Dublin Heuston (HST)"));
+    assert!(html.contains("Castlebar"));
+    assert!(html.contains("CBR"));
+    assert!(html.contains("Dublin Heuston"));
+    assert!(html.contains("HST"));
     assert!(html.contains("Service Status"));
+    assert!(html.contains("Staff Presence"));
     assert!(html.contains("Related Events"));
+
+    let westport_idx = html.find("Westport").unwrap();
+    let dublin_idx = html.find("Dublin Heuston").unwrap();
+    assert!(westport_idx < dublin_idx);
 }
 
 #[sqlx::test]
