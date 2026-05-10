@@ -3,7 +3,8 @@ use uuid::Uuid;
 
 use crate::domain::event::Event;
 use crate::domain::rail::{
-    RailEventContext, RailRoute, RailService, RailServiceStop, RailStation, StaffPresence,
+    RailEventContext, RailRoute, RailService, RailServiceStop, RailServiceStopTimelineItem,
+    RailStation, StaffPresence,
 };
 
 pub async fn list_routes(pool: &PgPool) -> Result<Vec<RailRoute>, sqlx::Error> {
@@ -31,6 +32,29 @@ pub async fn list_service_stops(
 ) -> Result<Vec<RailServiceStop>, sqlx::Error> {
     sqlx::query_as::<_, RailServiceStop>(
         "SELECT * FROM rail_service_stops WHERE service_id = $1 ORDER BY stop_sequence ASC",
+    )
+    .bind(service_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn list_service_stop_timeline(
+    pool: &PgPool,
+    service_id: Uuid,
+) -> Result<Vec<RailServiceStopTimelineItem>, sqlx::Error> {
+    sqlx::query_as::<_, RailServiceStopTimelineItem>(
+        r#"
+        SELECT
+            rss.stop_sequence,
+            rs.name AS station_name,
+            rs.code AS station_code,
+            rss.scheduled_arrival,
+            rss.scheduled_departure
+        FROM rail_service_stops rss
+        JOIN rail_stations rs ON rs.id = rss.station_id
+        WHERE rss.service_id = $1
+        ORDER BY rss.stop_sequence ASC, rs.code ASC
+        "#,
     )
     .bind(service_id)
     .fetch_all(pool)

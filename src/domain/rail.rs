@@ -44,6 +44,15 @@ pub struct RailServiceStop {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct RailServiceStopTimelineItem {
+    pub stop_sequence: i32,
+    pub station_name: String,
+    pub station_code: String,
+    pub scheduled_arrival: Option<DateTime<Utc>>,
+    pub scheduled_departure: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct StaffPresence {
     pub id: Uuid,
     pub actor_id: Uuid,

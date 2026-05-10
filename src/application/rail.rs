@@ -4,7 +4,8 @@ use uuid::Uuid;
 use crate::domain::event::EventStatus;
 use crate::domain::rail::StationContext;
 use crate::domain::rail::{
-    RailService, RailServiceStop, RailStation, ServiceContext, StaffPresence, StatusDot,
+    RailService, RailServiceStopTimelineItem, RailStation, ServiceContext, StaffPresence,
+    StatusDot,
 };
 use crate::infrastructure::rail_repo;
 
@@ -27,8 +28,8 @@ pub async fn get_service(pool: &PgPool, id: Uuid) -> Result<Option<RailService>,
 pub async fn list_service_stops(
     pool: &PgPool,
     service_id: Uuid,
-) -> Result<Vec<RailServiceStop>, sqlx::Error> {
-    rail_repo::list_service_stops(pool, service_id).await
+) -> Result<Vec<RailServiceStopTimelineItem>, sqlx::Error> {
+    rail_repo::list_service_stop_timeline(pool, service_id).await
 }
 
 pub async fn get_station(pool: &PgPool, id: Uuid) -> Result<Option<RailStation>, sqlx::Error> {
