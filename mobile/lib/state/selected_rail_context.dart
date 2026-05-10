@@ -36,6 +36,12 @@ class SelectedRailContext extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearStation() {
+    selectedStationId = null;
+    selectedStationName = null;
+    notifyListeners();
+  }
+
   void applyFallback({
     required String serviceId,
     required String serviceCode,

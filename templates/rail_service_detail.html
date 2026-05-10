@@ -12,6 +12,10 @@
       <span class="inline-block w-3 h-3 rounded-full {{ dot_class }}"></span>
       <span class="badge badge-outline">{{ status }}</span>
     </div>
+    <div class="text-sm mb-4">
+      <span class="font-semibold">Route Timeline:</span>
+      {{ origin_name }} ({{ origin_code }}) -&gt; {{ destination_name }} ({{ destination_code }})
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -55,6 +59,7 @@
             <tr>
               <th>Seq</th>
               <th>Station</th>
+              <th>Code</th>
               <th>Arrival</th>
               <th>Departure</th>
             </tr>
@@ -63,7 +68,8 @@
             {% for stop in stops %}
             <tr>
               <td>{{ stop.stop_sequence }}</td>
-              <td class="font-mono text-xs">{{ stop.station_id }}</td>
+              <td>{{ stop.station_name }}</td>
+              <td class="font-mono text-xs">{{ stop.station_code }}</td>
               <td>{{ stop.scheduled_arrival }}</td>
               <td>{{ stop.scheduled_departure }}</td>
             </tr>

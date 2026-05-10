@@ -37,6 +37,27 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="card bg-base-100 shadow">
     <div class="card-body">
+      <div class="flex items-center justify-between">
+        <h2 class="card-title text-lg">Stopping Services</h2>
+        <span class="badge badge-ghost">{{ stopping_services.len() }}</span>
+      </div>
+      {% if stopping_services.len() == 0 %}
+      <p class="text-sm text-base-content/70">No services currently stopping here.</p>
+      {% else %}
+      <ul class="space-y-2">
+        {% for service in stopping_services %}
+        <li class="text-sm">
+          <a href="/dashboard/rail/services/{{ service.service_id }}" class="link link-primary font-mono text-xs">{{ service.service_code }}</a>
+          <span class="text-base-content/70"> - {{ service.direction }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
       <h2 class="card-title text-lg">Staff Presence</h2>
       <div class="text-sm mb-3">
         <span class="font-semibold">On Duty:</span> {{ staff_on_duty_count }} / {{ staff_total_count }}

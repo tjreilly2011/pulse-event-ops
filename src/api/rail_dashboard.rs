@@ -52,9 +52,16 @@ struct StaffRow {
 
 struct StopRow {
     stop_sequence: i32,
-    station_id: String,
+    station_name: String,
+    station_code: String,
     scheduled_arrival: String,
     scheduled_departure: String,
+}
+
+struct StationServiceRow {
+    service_id: String,
+    service_code: String,
+    direction: String,
 }
 
 // ─── Template structs ────────────────────────────────────────────────────────
@@ -77,6 +84,10 @@ struct RailServiceDetailTemplate {
     service_id: String,
     service_code: String,
     direction: String,
+    origin_name: String,
+    origin_code: String,
+    destination_name: String,
+    destination_code: String,
     status: String,
     dot_class: String,
     route_id: String,
@@ -101,6 +112,7 @@ struct RailStationDetailTemplate {
     active_event_count: i64,
     staff_total_count: usize,
     staff_on_duty_count: i64,
+    stopping_services: Vec<StationServiceRow>,
     events: Vec<EventRow>,
     staff: Vec<StaffRow>,
 }
@@ -305,15 +317,40 @@ pub async fn service_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         .filter(|staff| staff.status == "ON_DUTY")
         .count();
 
-    let stops = context
-        .stops
+    let timeline_stops = match rail::list_service_stops(&pool, id).await {
+        Ok(stops) => stops,
+        Err(e) => {
+            tracing::error!("rail service_detail_page timeline error for {}: {}", id, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load rail service detail",
+            )
+                .into_response();
+        }
+    };
+
+    let origin_stop = timeline_stops.first();
+    let destination_stop = timeline_stops.last();
+
+    let origin_name = origin_stop
+        .map(|stop| stop.station_name.clone())
+        .unwrap_or_else(|| "-".to_string());
+    let origin_code = origin_stop
+        .map(|stop| stop.station_code.clone())
+        .unwrap_or_else(|| "-".to_string());
+    let destination_name = destination_stop
+        .map(|stop| stop.station_name.clone())
+        .unwrap_or_else(|| "-".to_string());
+    let destination_code = destination_stop
+        .map(|stop| stop.station_code.clone())
+        .unwrap_or_else(|| "-".to_string());
+
+    let stops = timeline_stops
         .into_iter()
         .map(|stop| StopRow {
             stop_sequence: stop.stop_sequence,
-            station_id: stop
-                .station_id
-                .map(|station_id| station_id.to_string())
-                .unwrap_or_else(|| "-".to_string()),
+            station_name: stop.station_name,
+            station_code: stop.station_code,
             scheduled_arrival: format_optional_time(stop.scheduled_arrival),
             scheduled_departure: format_optional_time(stop.scheduled_departure),
         })
@@ -335,6 +372,10 @@ pub async fn service_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         service_id: context.service.id.to_string(),
         service_code: context.service.service_code,
         direction: context.service.direction,
+        origin_name,
+        origin_code,
+        destination_name,
+        destination_code,
         status: context.service.status,
         dot_class: status_dot_class(&context.status_dot).to_string(),
         route_id: context
@@ -368,6 +409,22 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         }
     };
 
+    let stopping_services = match rail::list_services_for_station(&pool, id).await {
+        Ok(services) => services,
+        Err(e) => {
+            tracing::error!(
+                "rail station_detail_page stopping_services error for {}: {}",
+                id,
+                e
+            );
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load rail station detail",
+            )
+                .into_response();
+        }
+    };
+
     let station = context.station;
     let station_id = station.id.to_string();
     let station_name = station.name;
@@ -389,6 +446,15 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         .map(map_staff_row)
         .collect::<Vec<_>>();
 
+    let stopping_services = stopping_services
+        .into_iter()
+        .map(|service| StationServiceRow {
+            service_id: service.service_id.to_string(),
+            service_code: service.service_code,
+            direction: service.direction,
+        })
+        .collect::<Vec<_>>();
+
     render(RailStationDetailTemplate {
         station_id,
         station_name,
@@ -398,6 +464,7 @@ pub async fn station_detail_page(State(pool): State<PgPool>, Path(id): Path<Uuid
         active_event_count,
         staff_total_count,
         staff_on_duty_count,
+        stopping_services,
         events,
         staff,
     })
